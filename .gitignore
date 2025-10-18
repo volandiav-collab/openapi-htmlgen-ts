@@ -1,6 +1,6 @@
 # macOS finder cruft
 .DS_Store
-.vs_code
+.vscode
 
 # Dependencies
 node_modules/
@@ -15,3 +15,5 @@ debug-docx*.html
 temp.txt
 *.docx
 
+# IDE settings
+.vscode/
