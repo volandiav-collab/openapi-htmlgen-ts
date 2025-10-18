@@ -1,0 +1,1163 @@
+openapi: 3.1.0
+info:
+  title: Получение согласия на доступ к банковским счетам клиента. Методы для Физических Лиц.
+  description: "<h2> Введение </h2>\n\n  Стандарт содержит описание конечных точек, модели данных и контроля доступа к данным, которые являются общими для всех API, определяющих взаимодействие между Сторонним поставщиком и Поставщиком услуг в процессе получения Согласия Пользователя на доступ к счету.\n\n<h2> Область применения </h2>\n\n  Стандарт рекомендован к использованию организациями при обмене финансовыми сообщениями, связанными с получением Согласия на доступ к информации о банковском счете для физических лиц.\n  Стандарт предназначен для:\n  - участников получения информации о банковском счете (кредитные организации и их клиенты, а также Сторонние поставщики);\n  - разработчиков информационного и программного обеспечения, информационных систем.\n  Положения настоящего стандарта применяются на добровольной основе, если только в отношении конкретных положений обязательность их применения не установлена нормативными актами Банка России или условиями договоров.\n\n  Положения настоящего стандарта применяются совместно со следующими документами:\n  - СТО БР ФАПИ.СЕК-1.6-2024 Стандарт Банка России \"Безопасность финансовых (банковских) операций. Прикладные программные интерфейсы обеспечения безопасности финансовых сервисов на основе протокола OpenID\" (далее ФАПИ.СЕК).\n  - СТО БР ФАПИ.ПАОК-1.0-2024 Стандарт Банка России \"Безопасность финансовых (банковских) операций. Обеспечения безопасности финансовых сервисов при инициации OpenID Connect клиентом потока аутентификации по отдельному каналу\" (далее ФАПИ.ПАОК).\n  - СТО БР Открытые программные интерфейсы. Общие положения.\n  - СТО БР Открытые программные интерфейсы. Общие требования к прикладным стандартам.\n  - СТО БР Открытые программные интерфейсы. Получение информации о банковских счетах клиента. Спецификация API. Описание взаимодействия.\n  - СТО БР Открытые программные интерфейсы. Получение согласия на доступ к банковским счетам клиента. Правила взаимодействия.\n  - СТО БР Открытые программные интерфейсы. Профиль для расширенного режима безопасности.\n\n<h2> Термины и определения </h2>\n\nВ Стандарте применяются термины и определения в соответствии со стандартами ФАПИ.СЕК, ФАПИ.ПАОК, «Открытые программные интерфейсы. Общие положения» а также следующие:\n- `Ресурс`-\tРесурсом является представление любой сущности (например, перевод денежных средств, счет, транзакция) в определенном формате (например JSON). Каждый ресурс идентифицируется посредством постоянного идентификатора, который не меняется при изменении состояния ресурса.\n- `Полезная нагрузка`\tЧасть пакета данных (сообщения) без служебной информации (без заголовка, битов синхронизации и т. п.).\n- `YAML` -\tФормат сериализации данных, концептуально близкий к языкам разметки, но ориентированный на удобство ввода‑вывода типичных структур данных многих языков программирования.\n- `ППИУ` - Поставщик платежных и информационных и услуг.\n- `СПИУ` - Сторонний поставщик информационных услуг.\n- `Информационный сервис` - Сервис предоставления информации о счетах Пользователя в режиме реального времени.\n\n<h2> Общее описание процесса </h2>\n\nСпецификация API определяет поток взаимодействия при предоставлении Согласия пользователем на получении информации о счете клиента третей стороной через информационный сервис Открытых программных интерфейсов Открытых программных интерфейсов, которые позволяют СПИУ:\n- Создать или отозвать ресурс согласие на доступ к счету.\n"
+  version: 2.0.0
+  termsOfService: https://openbankingrussia.ru/terms/01
+  contact:
+    name: Ассоциация развития финансовых технологий (Ассоциация ФинТех)
+    url: https://fintechru.org
+    email: info@openbankingrussia.ru
+  license:
+    name: open-licence
+    url: https://openbankingrussia.ru
+  x-logo:
+    url: static/logo.svg
+    altText: Открытые программные интерфейсы
+    href: https://openbankingrussia.ru/
+servers:
+  - url: https://sb0.openbankingrussia.ru/sandbox0/open-banking/v2.0/acpe
+    description: |
+      Сервер ресурсов в рамках данной спецификации должен предоставлять единственный URI, соответствующий следующей структуре:
+      
+        ```http
+      - participant-path-prefix]/open-banking/[version]/[resource-group]/[resource]/[resource-id]/[sub-resource]
+      ````
+      
+      При этом параметр `resource-group` для данной спецификации должен иметь значение `acis-pe`.
+tags:
+  - name: AccountConsents
+    description: Согласие на доступ к счету
+    externalDocs:
+      description: Примеры применения
+      url: static/openapi-docs/obru_account_consents_pe.md
+paths:
+  /account-consents:
+    post:
+      operationId: createAccountAccessConsents
+      externalDocs:
+        description: Примеры использования AccountConsents.md
+        url: static/openapi-docs/AccountConsents.md
+      tags:
+        - AccountConsents
+      summary: Создание ресурса согласия на доступ к счету
+      description: |
+        Конечная точка позволяет СПИУ создавать на стороне ППИУ новый ресурс согласия на доступ к счету (account-consents)
+      parameters:
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/x-jws-signature'
+        - $ref: '#/components/parameters/x-customer-user-agent'
+      requestBody:
+        description: |
+          Запрос создания ресурса согласия account-consent
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/201AccountAccessConsentsCreated'
+        '400':
+          $ref: '#/components/responses/400Error-req'
+        '401':
+          $ref: '#/components/responses/401Error-req'
+        '403':
+          $ref: '#/components/responses/403Error-req'
+        '405':
+          $ref: '#/components/responses/405Error-req'
+        '406':
+          $ref: '#/components/responses/406Error-req'
+        '429':
+          $ref: '#/components/responses/429Error-req'
+        '500':
+          $ref: '#/components/responses/500Error-req'
+        '501':
+          $ref: '#/components/responses/501Error-req'
+        '503':
+          $ref: '#/components/responses/503Error-req'
+      security:
+        - TPPAccountConsentsPE:
+            - obru_account_consents_pe
+  /account-consents/{consentId}:
+    get:
+      operationId: getAccountAccessConsentsConsentId
+      tags:
+        - AccountConsents
+      summary: Получение ресурса согласия
+      description: Конечная точка позволяет СПИУ получать ресурс согласия на доступ к счету и проверять его состояние по идентификатуру ресурса
+      parameters:
+        - $ref: '#/components/parameters/consentId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/x-customer-user-agent'
+      responses:
+        '200':
+          $ref: '#/components/responses/200AccountAccessConsentsConsentIdRead'
+        '400':
+          $ref: '#/components/responses/400Error-req'
+        '401':
+          $ref: '#/components/responses/401Error-req'
+        '403':
+          $ref: '#/components/responses/403Error-req'
+        '405':
+          $ref: '#/components/responses/405Error-req'
+        '406':
+          $ref: '#/components/responses/406Error-req'
+        '429':
+          $ref: '#/components/responses/429Error-req'
+        '500':
+          $ref: '#/components/responses/500Error-req'
+        '501':
+          $ref: '#/components/responses/501Error-req'
+        '503':
+          $ref: '#/components/responses/503Error-req'
+      security:
+        - TPPAccountConsentsPE:
+            - obru_account_consents_pe
+    delete:
+      operationId: deleteAccountAccessConsentsConsentId
+      tags:
+        - AccountConsents
+      summary: Отзыв согласия на доступ к счету
+      description: Конечная точка позволяет СПИУ удалять ресурс согласия на доступ к счету, если Пользователь его отозвал на стороне СПИУ.
+      parameters:
+        - $ref: '#/components/parameters/consentId'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/x-customer-user-agent'
+      responses:
+        '204':
+          $ref: '#/components/responses/204Deleted'
+        '400':
+          $ref: '#/components/responses/400Error-req'
+        '401':
+          $ref: '#/components/responses/401Error-req'
+        '403':
+          $ref: '#/components/responses/403Error-req'
+        '405':
+          $ref: '#/components/responses/405Error-req'
+        '406':
+          $ref: '#/components/responses/406Error-req'
+        '429':
+          $ref: '#/components/responses/429Error-req'
+        '500':
+          $ref: '#/components/responses/500Error-req'
+        '501':
+          $ref: '#/components/responses/501Error-req'
+        '503':
+          $ref: '#/components/responses/503Error-req'
+      security:
+        - TPPAccountConsentsPE:
+            - obru_account_consents_pe
+components:
+  securitySchemes:
+    TPPAccountConsentsPE:
+      type: oauth2
+      description: СПИУ использует поток авторизации сlient сredentional для доступа к ресурсам ППИУ
+      flows:
+        clientCredentials:
+          tokenUrl: https://sb0.openbankingrussia.ru/sandbox0/as/aft/connect/token
+          scopes:
+            obru_account_consents_pe: Доступ к ресурсу согласия
+    PSUAccountConsentsPE:
+      type: oauth2
+      description: Поток авторизации, требующий получения СПИУ авторизации конечного Пользователя на доступ к ресурсам на сервере авторизации ППИУ.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://sb0.openbankingrussia.ru/sandbox0/as/aft/connect/authorize
+          tokenUrl: https://sb0.openbankingrussia.ru/sandbox0/as/aft/connect/token
+          scopes:
+            obru_accounts_pe: доступ к информации о счете
+  parameters:
+    x-fapi-interaction-id:
+      in: header
+      name: x-fapi-interaction-id
+      required: true
+      description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      schema:
+        type: string
+        format: uuid
+        description: Универсальный уникальный идентификатор (UUID) версии 4, в соответствии с IETC RFC 4122 "Universally Unique IDentifier (UUID) URN Namespace".
+      example: 97ed4827-7b6f-4491-a06f-b548d5a7512d
+    x-jws-signature:
+      name: x-jws-signature
+      in: header
+      required: true
+      description: Отделяемая подпись полезной нагрузки в формате JWS
+      schema:
+        type: string
+    x-customer-user-agent:
+      in: header
+      name: x-customer-user-agent
+      schema:
+        type: string
+      description: В заголовке указывается тип устройства (user-agent), который использует Пользователь. Сторонний Поставщик может заполнить это поле значением типа устройства (user-agent), указанным Пользователем. Если Пользователь использует мобильное приложение Стороннего Поставщика, Сторонний Поставщик проверяет, что строка типа устройства (user-agent) отличается от строки типа устройства (user-agent) на основе браузера.
+      required: false
+      example: mobile
+    consentId:
+      description: Идентификатор ресурса согласия
+      name: consentId
+      in: path
+      required: true
+      schema:
+        description: Идентификатор ресурса согласия, присвоенный на стороне Стороннего поставщика
+        type: string
+        pattern: ^[a-zA-Z0-9-_]{1,40}$
+        maxLength: 40
+        minLength: 1
+  schemas:
+    PermissionsTypePE:
+      description: |
+        Типы разрешений на доступ к счету для физических лиц
+
+        <table class=ScrollTableNormal border=1 cellspacing=0 cellpadding=0
+              style='width:100.0%;border-collapse:collapse;border:none'>
+          <thead>
+            <tr>
+                <th valign=top style='border:solid #DDDDDD 1.0pt;background:#F0F0F0; width:20.0%;
+                    padding:1.5pt 1.5pt 1.0pt 1.5pt'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Значение</b></span></p>
+                </th>
+                <th valign=top style='border:solid #DDDDDD 1.0pt;border-left:none;
+                    background:#F0F0F0;padding:1.5pt 1.5pt 1.0pt 1.5pt; width:80.0%'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Описание</b></span></p>
+                </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadAccountsBasic</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения основной информации о счете</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadAccountsDetail</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения детальной информации о счете</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadBalances</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения информации об остатке на счете</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadProducts</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения информации о продуктах, привязанных к счету</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadTransactionsBasic</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения основной информации об операциях по счету</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadTransactionsCredits</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения информации об операциях зачисления на счет</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadTransactionsDebits</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения информации об операциях списания со счета</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadTransactionsDetail</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения детальной информации об операциях по счету</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>ReadPaymentCards</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Возможность чтения информации о платежной карте</p></td>
+            </tr>
+          </tbody>
+        </table>
+      type: string
+      enum:
+        - ReadAccountsBasic
+        - ReadAccountsDetail
+        - ReadProducts
+        - ReadBalances
+        - ReadTransactionsBasic
+        - ReadTransactionsCredits
+        - ReadTransactionsDebits
+        - ReadTransactionsDetail
+        - ReadPaymentCards
+    Consent:
+      description: |2
+          Согласие на доступ к счету<br>
+          **Описание применения разрешений**
+          Разрешения, предоставляемые в Согласии, определяются в элементе "permissions" в виде кодов, которые используются для ограничения данных, возвращаемых в ответ на запрос ресурса. Эти коды определяют, к каким именно данным или операциям СПИУ запрашивает доступ у Пользователя.
+          При определении разрешений необходимо применять следующие условия:
+
+          - __Связь между "Detail" и "Basic" кодами разрешений:__
+          Когда предоставляется разрешение с кодом "Detail" (например, ReadAccountsDetail), это автоматически подразумевает доступ к соответствующему "Basic" коду разрешения (например, ReadAccountsBasic).
+          Запрос на получение и "Basic", и соответствующего ему "Detail" разрешения является дублирующим, но это не считается ошибкой, и ППИУ не должен отклонять запрос только из-за дублирования.
+          - __Обязательные разрешения:__
+          Массив разрешений должен содержать хотя бы одно из разрешений: ReadAccountsBasic или ReadAccountsDetail.
+          Недопустимые комбинации разрешений: Определены несколько комбинаций разрешений, которые запрещены, и если они присутствуют в запросе на доступ к учетной записи (Account Access Consent), ППИУ должен отклонить такой запрос с кодом ответа 400 (Bad Request):
+          Запрос на доступ к учетной записи с пустым массивом разрешений.
+          Запрос на доступ с кодом разрешения, который не поддерживается ППИУ (ППИУ обязаны публиковать список поддерживаемых конечных точек API).
+          Запрос на доступ с массивом разрешений, содержащим ReadTransactionsBasic, но без хотя бы одного из ReadTransactionsCredits или ReadTransactionsDebits.
+          Запрос на доступ с массивом разрешений, содержащим ReadTransactionsDetail, но без хотя бы одного из ReadTransactionsCredits или ReadTransactionsDebits.
+          Запрос на доступ с массивом разрешений, содержащим ReadTransactionsCredits, но без хотя бы одного из ReadTransactionsBasic или ReadTransactionsDetail.
+          Запрос на доступ с массивом разрешений, содержащим ReadTransactionsDebits, но без хотя бы одного из ReadTransactionsBasic или ReadTransactionsDetail.
+          - __Связь между "permmission" и конечными точками:__
+          При предоставлении доступа к конечным точкам ППИУ необходимо проверить наличие необходимых "permmission" в согласии, связанном с предъявленным токеном доступа.
+          ППИУ должен контролировать набор возвращаемых значений согласно ниже представленной таблице.<br>
+
+
+        <table class=ScrollTableNormal border=1 cellspacing=0 cellpadding=0 width="100%"
+            style='width:100.0%;border-collapse:collapse;border:none' cellpadding="5">
+            <thead>
+              <tr>
+                <th valign=top style='border:solid #DDDDDD 1.0pt;background:#F0F0F0; width:15.0%;
+                    padding:1.5pt 1.5pt 1.0pt 1.5pt'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>permission</b></span></p>
+                </th>
+                    <th valign=top style='border:solid #DDDDDD 1.0pt;background:#F0F0F0; width:15.0%;
+                    padding:1.5pt 1.5pt 1.0pt 1.5pt'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Конечные точки</b></span></p>
+                </th>
+                    <th valign=top style='border:solid #DDDDDD 1.0pt;background:#F0F0F0; width:15.0%;
+                    padding:1.5pt 1.5pt 1.0pt 1.5pt'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Бизнес логика</b></span></p>
+                </th>
+                    <th valign=top style='border:solid #DDDDDD 1.0pt;background:#F0F0F0; width:15.0%;
+                    padding:1.5pt 1.5pt 1.0pt 1.5pt'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Кластер данных(/Data/*)</b></span></p>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadAccountsBasic</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - /accounts<br>
+                  - /accounts/{accountId}
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Возможность чтения основной информации о счете</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - Account
+                </p></td>
+              </tr>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadAccountsDetail</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - /accounts<br>
+                  - /accounts/{accountId}
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Возможность чтения детальной информации о счете
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - Account/AccountDetails<br>
+                  - Account/Servicer<br>
+                  - Account/Owner
+                </p></td>
+              </tr>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadBalances</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - /balances<br>
+                  - /accounts/{accountId}/balances<br>
+                  - /payment-card-balances (требует разрешение `ReadPaymentCards`)
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Возможность чтения полной информации о балансе счета
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - Balance
+                </p></td>
+              </tr>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadTransactionsBasic</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - /transactions<br>
+                  - /accounts/{accountId}/transactions<br>
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Возможность чтения основной информации о транзакциях.<br>Массив разрешений должен также включать одино из следующих значений permission:<br>
+                  - ReadTransactionsCredits<br>
+                  - ReadTransactionsDebits
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - Transaction<br>
+                </p></td>
+              </tr>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadTransactionsDetail</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - /transactions<br>
+                  - /accounts/{accountId}/transactions<br>
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Возможность чтения детальной информации о транзакциях.<br>Массив разрешений должен также включать одино из следующих значений permission:<br>
+                  - ReadTransactionsCredits<br>
+                  - ReadTransactionsDebits
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Для методов Transactions:<br>
+                  - Transaction/Balance<br>
+                  - Transaction/DebtorAgent<br>
+                  - Transaction/DebtorAgentAccount<br>
+                  - Transaction/DebtorAccount<br>
+                  - Transaction/CreditorAccount<br>
+                  - Transaction/CreditorAgent<br>
+                  - Transaction/CreditorAgentAccount<br>
+                  - Transaction/RemittanceInformation<br><br>
+                </p></td>
+              </tr>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadTransactionsCredits</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>- /transactions</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Возможность чтения информации об операциях зачисления на счет
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>- Transaction</p></td>
+              </tr>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadTransactionsDebits</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>- /transactions</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Возможность чтения информации об операциях списания со счета
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>- Transaction</p></td>
+              </tr>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadProducts</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - /products<br>
+                  - /accounts/{accountId}/product
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Возможность чтения информации о продукте на счете
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - Product
+                </p></td>
+              </tr>
+              <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>ReadPaymentCards</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - /payment-cards<br>
+                  - /accounts/{accountId}/payment-cards<br>
+                  - /payment-card-balances (требует разрешение `ReadBalances`)
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  Возможность чтения информации о платежной карте
+                </p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>
+                  - PaymentCard<br>
+                  - Balance
+                </p></td>
+              </tr>
+            </tbody>
+        </table>
+        <br>
+        <br>
+        Список атрибутов объекта Consent
+      type: object
+      x-openapiru-object-type-contract: true
+      additionalProperties: false
+      required:
+        - permissions
+      properties:
+        permissions:
+          description: |
+            Указание типов данных доступа к счетам Пользователя. Это список доменов  данных, которые были одобрены Пользователем и запрошены для авторизации на
+            стороне ППИУ.
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/PermissionsTypePE'
+          minItems: 1
+          example:
+            - ReadAccountsBasic
+            - ReadAccountsDetail
+            - ReadBalances
+            - ReadTransactionsCredits
+            - ReadTransactionsDebits
+            - ReadTransactionsDetail
+        expirationDateTime:
+          description: Дата и время истечения срока действия разрешений. Если элемент не представлен, то согласие на доступ к счету выдается Пользователем сроком не более, чем на 90 календарных дней.
+          type: string
+          format: date-time
+          example: '2020-03-15T00:00:00+00:00'
+        transactionFromDateTime:
+          description: Дата и время начала периода запроса операции по счету. Если период не указан, данные будут возвращены с самой ранней из доступных операций по счету
+          type: string
+          format: date-time
+          example: '2019-09-15T00:00:00+00:00'
+        transactionToDateTime:
+          description: Дата и время окончания периода запроса операции по счету. Если период не указан, данные будут возвращены до последней доступной операции по счету
+          example: '2019-12-15T00:00:00+00:00'
+          type: string
+          format: date-time
+    ConsentRequest:
+      type: object
+      description: Запрос создания ресурса согласия на доступ к счету
+      additionalProperties: false
+      properties:
+        Data:
+          $ref: '#/components/schemas/Consent'
+      required:
+        - Data
+      minProperties: 1
+      maxProperties: 1
+    ISODateTime:
+      description: Формат даты и времени
+      type: string
+      format: date-time
+      example: '2021-06-05T15:15:13+00:00'
+    ConsentStatus:
+      description: |
+        Статус ресурса account-consent
+
+        <table class=ScrollTableNormal border=1 cellspacing=0 cellpadding=0 
+              style='width:100.0%;border-collapse:collapse;border:none'>
+          <thead>
+            <tr>
+                <th valign=top style='border:solid #DDDDDD 1.0pt;background:#F0F0F0; width:20.0%;
+                    padding:1.5pt 1.5pt 1.0pt 1.5pt'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Значение</b></span></p>
+                </th>
+                <th valign=top style='border:solid #DDDDDD 1.0pt;border-left:none;
+                    background:#F0F0F0;padding:1.5pt 1.5pt 1.0pt 1.5pt; width:80.0%'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Описание</b></span></p>
+                </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>AwaitingAuthorisation</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Ресурс согласия ожидает авторизации Пользователя</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Rejected</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Ресурс согласия был отклонен</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Authorised</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Ресурс согласия был успешно авторизован</p></td>
+            </tr>
+            <tr>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Revoked</p></td>
+               <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line>Ресурс согласия отозван</p></td>
+            </tr>
+          </tbody>
+        </table>
+      type: string
+      enum:
+        - AwaitingAuthorisation
+        - Rejected
+        - Authorised
+        - Revoked
+      example: AwaitingAuthorisation
+    DataConsentResponse:
+      description: Раздел данных полезной нагрузки ответа согласия на доступ к счету
+      type: object
+      additionalProperties: false
+      properties:
+        consentId:
+          type: string
+          pattern: ^[a-zA-Z0-9-_]{1,40}$
+          minLength: 1
+          maxLength: 40
+          description: Уникальный идентификатор, предназначенный для идентификации ресурса согласия на доступ к счету
+          example: 95791e79-0f2d-47de-a5e0-df034b28574a
+        creationDateTime:
+          description: Дата и время создания ресурса
+          allOf:
+            - $ref: '#/components/schemas/ISODateTime'
+        status:
+          $ref: '#/components/schemas/ConsentStatus'
+        statusUpdateDateTime:
+          description: Дата и время обновления статуса ресурса
+          allOf:
+            - $ref: '#/components/schemas/ISODateTime'
+        permissions:
+          description: Указание типов данных доступа к счетам Пользователя. Это список доменов данных, которые были одобрены Пользователем и запрошены для авторизации на стороне ППИУ
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/PermissionsTypePE'
+          minItems: 1
+          example:
+            - ReadAccountsBasic
+            - ReadAccountsDetail
+            - ReadBalances
+            - ReadTransactionsCredits
+            - ReadTransactionsDebits
+            - ReadTransactionsDetail
+        expirationDateTime:
+          description: Дата и время истечения срока действия разрешений. Если элемент не представлен, разрешения будет с открытой датой
+          allOf:
+            - $ref: '#/components/schemas/ISODateTime'
+          example: '2020-03-15T00:00:00+00:00'
+        transactionFromDateTime:
+          description: Дата и время начала периода запроса операции по счету. Если период не указан, данные будут возвращены с самой ранней из доступных операций по счету
+          allOf:
+            - $ref: '#/components/schemas/ISODateTime'
+          example: '2019-09-15T00:00:00+00:00'
+        transactionToDateTime:
+          description: Дата и время окончания периода запроса операции по счету. Если период не указан, данные будут возвращены до последней доступной операциию по счету
+          example: '2019-12-15T00:00:00+00:00'
+          allOf:
+            - $ref: '#/components/schemas/ISODateTime'
+      required:
+        - consentId
+        - creationDateTime
+        - permissions
+        - status
+        - statusUpdateDateTime
+    Links:
+      description: |
+        Поставщик услуг предоставляет постраничный ответ для операций GET, которые возвращают
+        множественные записи.
+      type: object
+      additionalProperties: false
+      properties:
+        self:
+          description: Текущая ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/open-banking/v2.0/group_id-value/?page=1
+        first:
+          description: Первая ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/open-banking/v2.0/group_id-value/?page=1
+        prev:
+          description: Предыдущая ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/open-banking/v2.0/group_id-value/?page=1
+        next:
+          description: Следующая ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/open-banking/v2.0/group_id-value/?page=1
+        last:
+          description: Последняя ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/open-banking/v2.0/group_id-value/?page=1
+      required:
+        - self
+    Meta:
+      description: Дополнительные данные о запросе. «totalPages», указывает на количество передаваемых страниц. Если передается более одной страницы, то элемент «totalPages» обязательно присутствует.
+      type: object
+      additionalProperties: false
+      properties:
+        totalPages:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 5000
+          description: Указывает на количество передаваемых страниц
+          example: 1
+    ConsentResponse:
+      type: object
+      additionalProperties: false
+      description: Ресурс согласия на доступ к счету
+      properties:
+        Data:
+          description: |
+            Раздел данных полезной нагрузки ответа согласия на доступ к счету
+          allOf:
+            - $ref: '#/components/schemas/DataConsentResponse'
+        Links:
+          description: Раздел для указания ссылок
+          allOf:
+            - $ref: '#/components/schemas/Links'
+          example:
+            self: https://sb.example.ru/open-banking/v2.0/aisp-pe/
+        Meta:
+          description: Раздел метаданных
+          allOf:
+            - $ref: '#/components/schemas/Meta'
+      required:
+        - Data
+      minProperties: 1
+      maxProperties: 3
+      example:
+        Data:
+          consentId: a5791e79-0f2d-47de-a5e0-df034b28574a
+          creationDateTime: '2021-06-05T15:15:13+00:00'
+          status: AwaitingAuthorisation
+          statusUpdateDateTime: '2021-06-05T15:15:13+00:00'
+          permissions:
+            - ReadAccountsBasic
+            - ReadAccountsDetail
+            - ReadBalances
+            - ReadTransactionsCredits
+            - ReadTransactionsDebits
+            - ReadTransactionsDetail
+          expirationDateTime: '2020-03-15T00:00:00+00:00'
+          transactionFromDateTime: '2019-09-15T00:00:00+00:00'
+          transactionToDateTime: '2019-12-15T00:00:00+00:00'
+        Links:
+          self: https://sb.example.ru/v1.3/example
+        Meta:
+          totalPages: 1
+    OBRUErrorResponseErrorCode:
+      description: |
+        Низкоуровневое описание ошибки. Поставщик услуг должен заполнить сообщение детальным описанием ошибки, не раскрывая конфиденциальную информацию.
+        <table class=ScrollTableNormal border=1 cellspacing=0 cellpadding=0 
+              style='width:100.0%;border-collapse:collapse;border:none'>
+          <thead>
+            <tr>
+                <th valign=top style='border:solid #DDDDDD 1.0pt;background:#F0F0F0; width:15.0%;
+                    padding:1.5pt 1.5pt 1.0pt 1.5pt'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Код ошибки</b></span></p>
+                </th>
+                <th valign=top style='border:solid #DDDDDD 1.0pt;border-left:none;
+                    background:#F0F0F0;padding:1.5pt 1.5pt 1.0pt 1.5pt; width:6.0%'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>HTTP статус</b></span></p>
+                </th>
+                <th valign=top style='border:solid #DDDDDD 1.0pt;border-left:none;
+                    background:#F0F0F0;padding:1.5pt 1.5pt 1.0pt 1.5pt; width:79.0%'>
+                    <p class=MsoNormal><span lang=RU style='color:#262626'><b>Описание</b></span></p>
+                </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Field.Expected</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Если поля передаются парой (ключ-значение) и значение не было передано. В поле path должен передаваться путь к ожидаемому полю (например, ErrorResponse.Errors.path == “AccountResponse.Data.Account.AccountDetails.identification”). Например, для допустимого значения поля «schemeName» должно передаваться соответствующее значение идентификатора в поле «identification».</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Field.Invalid</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>В поле указано недопустимое значение или длина предоставленного значения превышает соответствующую максимальную длину поля в домене ППИУ. Ссылка на недопустимое поле должна быть указана в поле path (например, ErrorResponse.Errors.path == “AccountResponse.Data.Account.AccountDetails.schemeName”). В поле URL может быть ссылка на веб-страницу, объясняющую правильное поведение.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Field.InvalidDate</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Указана неверная дата. Например, когда ожидается будущая дата, а указана дата в прошлом или текущая дата. Ссылка на недопустимое поле должна быть указана в поле path.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Field.Missing</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Обязательное поле, необходимое для API, отсутствует в полезной нагрузке. Данный код ошибки можно использовать, если ошибка еще не определена при проверке RU.CBR.Resource.InvalidFormat.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Header.Invalid</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>В элементе заголовка HTTP указано неверное значение. Элемент заголовка HTTP должен быть указан в элементе пути.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Header.Missing</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Обязательный элемент HTTP-заголовка не был предоставлен. Элемент заголовка HTTP должен быть указан в элементе path.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Resource.InvalidFormat</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Json-схема полезной нагрузки не соответствует конечной точке. Например, конечная точка POST /account-consents вызывается с полезной нагрузкой JSON, которая не может быть проанализирована в классе ConsentRequest.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Resource.NotFound</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Ресурс с указанным идентификатором не существует или не может быть обработан (в том числе неприемлемый формат или значение идентификатора ресурса).</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Resource.NotCreated</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Ресурс с указанным идентификатором еще не создан и не может быть передан в ответном сообщении. Для асинхронных вызовов.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Rules.AfterCutOffDateTime</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Ресурс согласия или ресурс платежа запрашиваются после даты CutOffDateTime.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Signature.Invalid</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Заголовок подписи x-jws-signature был проанализирован и имеет действительный заголовок JOSE, соответствующий спецификации. Но сама подпись не может быть проверена.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Signature.InvalidClaim</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Заголовок JOSE в элементе x-jws-signature имеет одно или несколько утверждений (claim) с недопустимым значением.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Signature.MissingClaim</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Заголовок JOSE в элементе x-jws-signature имеет одно или несколько обязательных утверждений, которые не указаны.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Signature.Malformed</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>x-jws-signature в заголовке запроса была искажена и не могла быть проанализирована как допустимый JWS.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Signature.Missing</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Запрос API предполагает x-jws-signature в заголовке, но элемент отсутствовал.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Unsupported.AccountIdentifier</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Идентификатор счета не поддерживается для данной схемы. Элемент path должен быть заполнен путем к элементу accountIdentifier.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Unsupported.LocalInstrument</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Указанный localInstrument не поддерживается ППИУ. Элемент path должен быть заполнен путем к элементу localInstrument.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Operation.Unprocessable</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>400</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Операция по извлечению ресурса не может быть выполнена или недопустима.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Authenticate.InvalidScope</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>403</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Предъявленный токен доступа не содержит область действия ("scope") необходимую для доступа к ресурсу.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Authenticate.InvalidConsent</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>403</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Отказано доступу к ресурсу с указанным идентификатором, так как согласие Пользователя отсутствует или не корректно.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Authenticate.SuspiciousActivityDetected</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>403</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Доступ к ресурсу приостановлен по причине выявления подозрения на мошеннические действия.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.Rules.ResourceAlreadyExists</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>409</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Ресурс с такими же параметрами уже существует.</p></td>
+            </tr>
+            <tr>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>RU.CBR.UnexpectedError</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>5xx</p></td>
+                <td valign=top style='border-top:none;border-left:none;border-bottom:solid #DDDDDD 1.0pt; border-right:solid #DDDDDD 1.0pt;padding:1.5pt 1.5pt 1.0pt 1.5pt'><p class=MsoNormal white-space: pre-line><p class=MsoNormal white-space: pre-line>Данный код ошибки можно использовать при возникновении непредвиденной ошибки.</p></td>
+            </tr>
+          </tbody>
+        </table>
+      type: string
+      example: RU.CBR.Field.Missing
+      enum:
+        - RU.CBR.Field.Expected
+        - RU.CBR.Field.Invalid
+        - RU.CBR.Field.InvalidDate
+        - RU.CBR.Field.Missing
+        - RU.CBR.Header.Invalid
+        - RU.CBR.Header.Missing
+        - RU.CBR.Resource.InvalidFormat
+        - RU.CBR.Resource.NotFound
+        - RU.CBR.Resource.NotCreated
+        - RU.CBR.Rules.AfterCutOffDateTime
+        - RU.CBR.Signature.Invalid
+        - RU.CBR.Signature.InvalidClaim
+        - RU.CBR.Signature.MissingClaim
+        - RU.CBR.Signature.Malformed
+        - RU.CBR.Signature.Missing
+        - RU.CBR.Unsupported.AccountIdentifier
+        - RU.CBR.Unsupported.LocalInstrument
+        - RU.CBR.Operation.Unprocessable
+        - RU.CBR.Authenticate.InvalidScope
+        - RU.CBR.Authenticate.InvalidConsent
+        - RU.CBR.Authenticate.SuspiciousActivityDetected
+        - RU.CBR.Rules.ResourceAlreadyExists
+        - RU.CBR.UnexpectedError
+    OBRUError:
+      description: Контейнер с ошибкой
+      type: object
+      additionalProperties: false
+      properties:
+        errorCode:
+          description: Низкоуровневое описание ошибки
+          $ref: '#/components/schemas/OBRUErrorResponseErrorCode'
+        message:
+          type: string
+          pattern: ^[\w\W]{1,500}$
+          minLength: 1
+          maxLength: 500
+          description: Описание ошибки
+          example: Обязательное поле не указано
+        path:
+          type: string
+          pattern: ^[\w\W]{1,500}$
+          minLength: 1
+          maxLength: 500
+          description: Путь к элементу с ошибкой в JSON объекте. Рекомендуемое, но не обязательное поле
+          example: Data.Model.Object.name
+        url:
+          type: string
+          format: uri
+          description: URL для помощи в устранении проблемы, Также через URL можно предоставлять дополнительную информацию
+          example: https://example.com/error-description
+      required:
+        - errorCode
+        - message
+    OBRUErrorResponse:
+      description: Контейнер с детализацией ошибки
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          pattern: ^[a-zA-Z0-9-]{1,40}$
+          minLength: 1
+          maxLength: 40
+          description: Высокоуровневый текстовый код ошибки, необходимый для классификации
+          example: '400'
+        id:
+          type: string
+          pattern: ^[a-zA-Z0-9-]{1,40}$
+          minLength: 1
+          maxLength: 40
+          description: Уникальный идентификатор ошибки, для целей аудита, в случае неизвестных / не классифицированных ошибок
+          example: 4aca5b0d-1730-416f-a52b-6d353b687082
+        message:
+          type: string
+          pattern: ^[\w\W]{1,500}$
+          minLength: 1
+          maxLength: 500
+          description: Краткое сообщение об ошибке. Например, «что-то не так с предоставленными параметрами запроса»
+          example: Bad Request
+        Errors:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/OBRUError'
+          minItems: 1
+      required:
+        - code
+        - message
+        - Errors
+  responses:
+    201AccountAccessConsentsCreated:
+      description: Ответ на создание ресурса согласия на доступ к счету
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+        x-jws-signature:
+          required: true
+          description: Отделяемая подпись полезной нагрузки в формате JWS
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ConsentResponse'
+          example:
+            Data:
+              consentId: a5791e79-0f2d-47de-a5e0-df034b28574a
+              creationDateTime: '2021-06-05T15:15:13+00:00'
+              status: AwaitingAuthorisation
+              statusUpdateDateTime: '2021-06-05T15:15:13+00:00'
+              permissions:
+                - ReadAccountsBasic
+                - ReadAccountsDetail
+                - ReadBalances
+                - ReadTransactionsCredits
+                - ReadTransactionsDebits
+                - ReadTransactionsDetail
+              expirationDateTime: '2020-03-15T00:00:00+00:00'
+              transactionFromDateTime: '2019-09-15T00:00:00+00:00'
+              transactionToDateTime: '2019-12-15T00:00:00+00:00'
+            Links:
+              self: https://sb.example.ru/v1.3/example
+            Meta:
+              totalPages: 1
+          x-examples:
+            name: Пример ответа создания ресурса согласия
+            value:
+              Data:
+                consentId: a5791e79-0f2d-47de-a5e0-df034b28574a
+                creationDateTime: '2021-06-05T15:15:13+00:00'
+                status: AwaitingAuthorisation
+                statusUpdateDateTime: '2021-06-05T15:15:13+00:00'
+                permissions:
+                  - ReadAccountsBasic
+                  - ReadAccountsDetail
+                  - ReadBalances
+                  - ReadTransactionsCredits
+                  - ReadTransactionsDebits
+                  - ReadTransactionsDetail
+                expirationDateTime: '2020-03-15T00:00:00+00:00'
+                transactionFromDateTime: '2019-09-15T00:00:00+00:00'
+                transactionToDateTime: '2019-12-15T00:00:00+00:00'
+              Links:
+                self: https://sb.example.ru/v1.3/example
+              Meta:
+                totalPages: 1
+    400Error-req:
+      description: Запрос имеет неверное, отсутствующее или несовместимое тело JSON, параметры URL или поля заголовка
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OBRUErrorResponse'
+          examples:
+            obru:
+              value:
+                code: '400'
+                id: 5aca5b0d-1730-416f-a52b-6d353b687082
+                message: Bad Request
+                Errors:
+                  - errorCode: RU.CBR.Field.Missing
+                    message: Обязательное поле, необходимое для API, отсутствует в полезной нагрузке
+                    path: Data.Model.Object.filled
+                    url: https://example.com/error-description
+    401Error-req:
+      description: Заголовок авторизации отсутствует или неверный токен
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+        www-authenticate:
+          required: true
+          schema:
+            type: string
+            enum:
+              - Valid token required
+    403Error-req:
+      description: Токен имеет неверную область действия или была нарушена политика безопасности
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OBRUErrorResponse'
+          example:
+            code: '403'
+            id: ab41a751-619b-4947-bf0a-251f6e92f599
+            message: Forbidden
+            Errors:
+              - errorCode: RU.CBR.Authenticate.InvalidScope
+                message: Предъявленный токен доступа не содержит область действия (scope) необходимый для доступа к ресурсу
+                url: https://example.com/error-description
+    405Error-req:
+      description: Сторонний Поставщик пытается получить доступ к ресурсу с помощью метода, который не поддерживается
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+    406Error-req:
+      description: Запрос содержал параметр заголовка Accept, отличный от разрешенных media types, и набор символов, отличный от UTF-8
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+    429Error-req:
+      description: Операция была отклонена, так как слишком много запросов было сделано в течение определенного периода времени
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+        Retry-After:
+          schema:
+            type: string
+    500Error-req:
+      description: Что-то пошло не так на стороне Стороннего поставщика.
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OBRUErrorResponse'
+          example:
+            code: '500'
+            id: af467d1b-985d-4a8e-972e-24a32287085f
+            message: Internal Server Error
+            Errors:
+              - errorCode: RU.CBR.UnexpectedError
+                message: Что-то пошло не так на стороне Поставщика услуг
+                url: https://example.com/error-description
+    501Error-req:
+      description: Сторонний поставщик не поддерживает функции, необходимые для выполнения запроса
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OBRUErrorResponse'
+          example:
+            code: '501'
+            id: 451f7718-2e96-46f0-b286-4b1c8370b87e
+            message: Not Implemented
+            Errors:
+              - errorCode: RU.CBR.UnexpectedError
+                message: Метод не поддерживается
+                url: https://example.com/error-description
+    503Error-req:
+      description: Сервис временно не доступен
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OBRUErrorResponse'
+          example:
+            code: '503'
+            id: 63a8dddb-b92d-4ac7-82c3-c9a9efb878a5
+            message: Service Unavailable
+            Errors:
+              - errorCode: RU.CBR.UnexpectedError
+                message: Сервис временно не доступен
+                url: https://example.com/error-description
+    200AccountAccessConsentsConsentIdRead:
+      description: Информация о ресурсе согласия
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+        x-jws-signature:
+          required: true
+          description: Отделяемая подпись полезной нагрузки в формате JWS
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ConsentResponse'
+    204Deleted:
+      description: Осутствует содержание
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.

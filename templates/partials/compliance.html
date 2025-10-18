@@ -1,0 +1,11 @@
+<section id="compliance">
+  <h2>Соответствие нормативам</h2>
+  {% if compliance.standards %}
+    <h3>Нормативные документы</h3>
+    <ul>
+      {% for s in compliance.standards %}
+        <li>{{ s.code }} — {{ s.title }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>

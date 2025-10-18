@@ -1,0 +1,14 @@
+<section id="changelog">
+  <h2>Журнал изменений</h2>
+  <ul>
+    {% for c in change_log %}
+      <li>v{{ c.version }} — {{ c.date }}
+        <ul>
+          {% for item in c.changes %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </li>
+    {% endfor %}
+  </ul>
+</section>

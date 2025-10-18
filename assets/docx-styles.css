@@ -1,0 +1,29 @@
+body { font-family: "Arial", "Calibri", "Segoe UI", sans-serif; font-size: 12pt; line-height: 1.5; color: #000000; margin: 0; }
+h1 { font-size: 14pt; color: #000000; margin: 24pt 0 12pt; font-weight: 700; }
+h2 { font-size: 14pt; color: #000000; margin: 18pt 0 10pt; font-weight: 600; }
+h3 { font-size: 14pt; color: #000000; margin: 14pt 0 8pt; font-weight: 600; }
+p { margin: 0 0 12pt; text-align: justify; }
+ul, ol { margin: 0 0 10pt 18pt; }
+li { margin-bottom: 4pt; }
+strong { font-weight: 600; }
+em { font-style: italic; }
+pre { background: #F8FAFC; border: 1px solid #CBD5E1; padding: 10px; border-radius: 6px; font-family: "Consolas", "Courier New", monospace; font-size: 10pt; white-space: pre-wrap; word-break: break-word; }
+code { font-family: "Consolas", "Courier New", monospace; font-size: 10pt; background: #F3F4F6; padding: 0 2px; border-radius: 3px; }
+table { font-size: 11pt; }
+.docx-title { text-align: center; padding-top: 120pt; color: #000000; }
+.docx-title-logo { width: 236px; height: auto; margin: 0 auto 40pt; }
+.docx-title-standard { font-size: 18pt; letter-spacing: 0.08em; margin: 0 0 18pt; font-weight: 400; text-align: center;}
+.docx-title-subtitle { font-size: 20pt; font-weight: 700; color: #0070C0; margin: 0 0 28pt; text-align: center;}
+.docx-title-name { font-size: 28pt; font-weight: 700; margin: 0 0 48pt; }
+.docx-title-docs-code { font-size: 12pt; margin: 0 0 18pt; }
+.docx-title-meta { text-align: right; font-size: 14pt; margin: 48pt 0 64pt; }
+.docx-title-meta p { margin: 0 0 12pt; }
+.docx-title-footer { font-size: 16pt; font-weight: 700; margin: 0 0 6pt; }
+.docx-toc { page-break-before: always; page-break-after: always; font-size: 12pt; color: #000000; }
+.docx-toc-title { text-align: center; font-weight: 700; font-size: 16pt; margin: 0 0 24pt; }
+.docx-toc-index { display: inline-block; min-width: 36pt; font-weight: 600; }
+.docx-toc-item { font-size: 12pt; margin: 8pt 0; }
+.docx-toc-text { display: inline-block; margin-left: 6pt; }
+.docx-toc-item a { color: #000000; text-decoration: none; }
+.docx-toc-item a:hover { text-decoration: underline; }
+.docx-body { page-break-before: always; page-break-after: auto; }

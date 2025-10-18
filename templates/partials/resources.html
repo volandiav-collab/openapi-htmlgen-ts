@@ -1,0 +1,103 @@
+<section id="resources">
+  <h2>Ресурсы и методы</h2>
+  {% for r in resources %}
+    <article class="resource">
+      <h3>{{ r.tag }}</h3>
+      {% if r.summary %}<div class="md">{{ r.summary | markdown }}</div>{% endif %}
+      {% for e in r.endpoints %}
+        <div class="endpoint">
+          <h4><span class="method">{{ e.method }}</span> <code>{{ e.path }}</code></h4>
+          {% if e.summary %}<div class="md">{{ e.summary | markdown }}</div>{% endif %}
+          {% if e.description %}<div class="md">{{ e.description | markdown }}</div>{% endif %}
+          {% if e.parameters %}
+            <details>
+              <summary>Параметры</summary>
+              <table>
+                <thead><tr><th>Имя</th><th>Где</th><th>Обяз.</th><th>Тип</th><th>Описание</th></tr></thead>
+                <tbody>
+                {% for p in e.parameters %}
+                  <tr>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.in }}</td>
+                    <td>{{ 'Да' if p.required else 'Нет' }}</td>
+                    <td>
+                      {% if p.schemaRef %}
+                        <a href="#schema-{{ p.schemaRef }}">{{ p.schemaRef }}</a>
+                      {% else %}
+                        {{ p.schemaDisplay or p.schemaType or '—' }}
+                      {% endif %}
+                    </td>
+                    <td>{% if p.description %}{{ p.description | markdownInline }}{% endif %}</td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </details>
+          {% endif %}
+          {% if e.requestBody %}
+            <details>
+              <summary>Тело запроса</summary>
+              {% if e.requestBody.description %}
+                <div class="md">{{ e.requestBody.description | markdown }}</div>
+              {% endif %}
+              {% if e.requestBody.content and e.requestBody.content | length > 0 %}
+                <table>
+                  <thead><tr><th>Формат</th><th>Схема</th></tr></thead>
+                  <tbody>
+                    {% for c in e.requestBody.content %}
+                      <tr>
+                        <td>{{ c.mediaType }}</td>
+                        <td>
+                          {% if c.schemaRef %}
+                            <a href="#schema-{{ c.schemaRef }}">{{ c.schemaRef }}</a>
+                          {% else %}
+                            {{ c.schemaDisplay or c.schemaType or '—' }}
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              {% else %}
+                <div>—</div>
+              {% endif %}
+            </details>
+          {% endif %}
+          {% if e.responses %}
+            <details open>
+              <summary>Ответы</summary>
+              <table>
+                <thead><tr><th>Код</th><th>Описание</th><th>Контент</th></tr></thead>
+                <tbody>
+                {% for r in e.responses %}
+                  <tr>
+                    <td>{{ r.status }}</td>
+                    <td>{% if r.description %}{{ r.description | markdownInline }}{% endif %}</td>
+                    <td>
+                      {% if r.content and r.content | length > 0 %}
+                        {% for c in r.content %}
+                          <div>
+                            <span>{{ c.mediaType }}</span>
+                            —
+                            {% if c.schemaRef %}
+                              <a href="#schema-{{ c.schemaRef }}">{{ c.schemaRef }}</a>
+                            {% else %}
+                              {{ c.schemaDisplay or c.schemaType or '—' }}
+                            {% endif %}
+                          </div>
+                        {% endfor %}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </details>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </article>
+  {% endfor %}
+</section>

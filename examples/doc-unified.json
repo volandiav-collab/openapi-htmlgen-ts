@@ -1,0 +1,624 @@
+{
+  "meta": {
+    "title": "Открытые программные интерфейсы. Получение информации о банковских счетах клиента. Методы для Юридических Лиц.",
+    "version": "2.0.0",
+    "date": "2025-10-07",
+    "organization": "Банк России",
+    "docs_code": "СТО БР — AISP-LE"
+  },
+  "intro": {
+    "summary": "Спецификация API описывает конечные точки, модели данных и контроль доступа для получения информации по банковским счетам, включая счета ЮЛ.",
+    "purpose": "Унифицированная публикация спецификации API в HTML-формате.",
+    "audience": [
+      "Архитекторы",
+      "Разработчики",
+      "Тестировщики"
+    ],
+    "terms": [
+      {
+        "term": "ППИУ",
+        "definition": "Поставщик платежных и информационных услуг."
+      },
+      {
+        "term": "СПИУ",
+        "definition": "Сторонний поставщик информационных услуг."
+      }
+    ]
+  },
+  "api_overview": {
+    "servers": [
+      {
+        "url": "https://api.bank.example/open-banking/v1/aisp-le",
+        "description": "Прод",
+        "env": "prod"
+      }
+    ],
+    "security": [
+      {
+        "scheme": "oauth2",
+        "description": "Client Authorization Code Flow",
+        "flows": [
+          "authorization_code"
+        ]
+      }
+    ],
+    "tags": [
+      {
+        "name": "Accounts",
+        "description": "Операции со счетами"
+      },
+      {
+        "name": "Balances",
+        "description": "Получение остатков"
+      },
+      {
+        "name": "Statements Async",
+        "description": "Асинхронные выписки"
+      },
+      {
+        "name": "Statements Sync",
+        "description": "Синхронные выписки"
+      }
+    ]
+  },
+  "resources": [
+    {
+      "tag": "Accounts",
+      "summary": "Методы получения информации о счетах",
+      "endpoints": [
+        {
+          "operationId": "getAccounts",
+          "method": "GET",
+          "path": "/accounts",
+          "summary": "Получение списка счетов",
+          "description": "Возвращает список счетов и их идентификаторы (accountId), авторизованные пользователем.",
+          "parameters": [
+            {
+              "name": "x-fapi-interaction-id",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "RFC4122 UUID идентификатор корреляции"
+            },
+            {
+              "name": "page",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Номер страницы"
+            }
+          ],
+          "requestBody": null,
+          "responses": [
+            {
+              "status": "200",
+              "description": "OK",
+              "content": [
+                {
+                  "mediaType": "application/json",
+                  "schemaRef": "#/components/schemas/AccountResponseLE"
+                }
+              ]
+            }
+          ],
+          "security": [
+            "oauth2"
+          ],
+          "examples": null
+        },
+        {
+          "operationId": "getAccountsAccountId",
+          "method": "GET",
+          "path": "/accounts/{accountId}",
+          "summary": "Детали счета по accountId",
+          "description": "Возвращает детальную информацию по счёту.",
+          "parameters": [
+            {
+              "name": "accountId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Идентификатор счёта"
+            },
+            {
+              "name": "x-fapi-interaction-id",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "RFC4122 UUID идентификатор корреляции"
+            }
+          ],
+          "requestBody": null,
+          "responses": [
+            {
+              "status": "200",
+              "description": "OK",
+              "content": [
+                {
+                  "mediaType": "application/json",
+                  "schemaRef": "#/components/schemas/AccountResponseLE"
+                }
+              ]
+            }
+          ],
+          "security": [
+            "oauth2"
+          ],
+          "examples": null
+        }
+      ]
+    },
+    {
+      "tag": "Balances",
+      "summary": "Методы получения остатков",
+      "endpoints": [
+        {
+          "operationId": "getAccountsAccountIdBalances",
+          "method": "GET",
+          "path": "/accounts/{accountId}/balances",
+          "summary": "Баланс по счёту",
+          "description": "Получение остатка по идентификатору счёта.",
+          "parameters": [
+            {
+              "name": "accountId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Идентификатор счёта"
+            },
+            {
+              "name": "x-fapi-interaction-id",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "RFC4122 UUID идентификатор корреляции"
+            }
+          ],
+          "requestBody": null,
+          "responses": [
+            {
+              "status": "200",
+              "description": "OK",
+              "content": [
+                {
+                  "mediaType": "application/json",
+                  "schemaRef": "#/components/schemas/BalanceResponseLE"
+                }
+              ]
+            }
+          ],
+          "security": [
+            "oauth2"
+          ],
+          "examples": null
+        },
+        {
+          "operationId": "getBalances",
+          "method": "GET",
+          "path": "/balances",
+          "summary": "Остатки по всем счетам",
+          "description": "Остаток по всем счетам, указанным в согласии.",
+          "parameters": [
+            {
+              "name": "page",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Номер страницы"
+            },
+            {
+              "name": "x-fapi-interaction-id",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "RFC4122 UUID идентификатор корреляции"
+            }
+          ],
+          "requestBody": null,
+          "responses": [
+            {
+              "status": "200",
+              "description": "OK",
+              "content": [
+                {
+                  "mediaType": "application/json",
+                  "schemaRef": "#/components/schemas/BalanceResponseLE"
+                }
+              ]
+            }
+          ],
+          "security": [
+            "oauth2"
+          ],
+          "examples": null
+        }
+      ]
+    },
+    {
+      "tag": "Statements Async",
+      "summary": "Асинхронная выписка",
+      "endpoints": [
+        {
+          "operationId": "createStatementsAccountId",
+          "method": "POST",
+          "path": "/statements",
+          "summary": "Создание ресурса выписки",
+          "description": "Создаёт ресурс выписки по accountId.",
+          "parameters": [
+            {
+              "name": "x-fapi-interaction-id",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "RFC4122 UUID идентификатор корреляции"
+            },
+            {
+              "name": "x-idempotency-key",
+              "in": "header",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Идемпотентность запроса"
+            },
+            {
+              "name": "x-jws-signature",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Отделяемая подпись JWS"
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": [
+              {
+                "mediaType": "application/json",
+                "schemaRef": "#/components/schemas/StatementInitRequest"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "status": "201",
+              "description": "Created",
+              "content": [
+                {
+                  "mediaType": "application/json",
+                  "schemaRef": "#/components/schemas/StatementInitResponse"
+                }
+              ]
+            }
+          ],
+          "security": [
+            "oauth2"
+          ],
+          "examples": null
+        },
+        {
+          "operationId": "getStatementsStatementId",
+          "method": "GET",
+          "path": "/statements/{statementId}",
+          "summary": "Получение выписки по идентификатору",
+          "description": "Возвращает выписку по statementId; поддерживает фильтрацию по датам.",
+          "parameters": [
+            {
+              "name": "statementId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Идентификатор выписки"
+            },
+            {
+              "name": "fromBookingDateTime",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Начало периода (date-time)"
+            },
+            {
+              "name": "toBookingDateTime",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Окончание периода (date-time)"
+            },
+            {
+              "name": "x-fapi-interaction-id",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "RFC4122 UUID идентификатор корреляции"
+            }
+          ],
+          "requestBody": null,
+          "responses": [
+            {
+              "status": "200",
+              "description": "OK",
+              "content": [
+                {
+                  "mediaType": "application/json",
+                  "schemaRef": "#/components/schemas/StatementStatementIdResponse"
+                }
+              ]
+            }
+          ],
+          "security": [
+            "oauth2"
+          ],
+          "examples": null
+        }
+      ]
+    },
+    {
+      "tag": "Statements Sync",
+      "summary": "Синхронная выписка",
+      "endpoints": [
+        {
+          "operationId": "getAccountsAccountIdStatements",
+          "method": "GET",
+          "path": "/accounts/{accountId}/statements",
+          "summary": "Выписка по счёту",
+          "description": "Получение выписки по идентификатору счёта (онлайн).",
+          "parameters": [
+            {
+              "name": "accountId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Идентификатор счёта"
+            },
+            {
+              "name": "fromBookingDateTime",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Начало периода (date-time)"
+            },
+            {
+              "name": "toBookingDateTime",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Окончание периода (date-time)"
+            },
+            {
+              "name": "x-fapi-interaction-id",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "RFC4122 UUID идентификатор корреляции"
+            }
+          ],
+          "requestBody": null,
+          "responses": [
+            {
+              "status": "200",
+              "description": "OK",
+              "content": [
+                {
+                  "mediaType": "application/json",
+                  "schemaRef": "#/components/schemas/StatementAccountIdResponse"
+                }
+              ]
+            }
+          ],
+          "security": [
+            "oauth2"
+          ],
+          "examples": null
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": [
+      {
+        "name": "AccountResponseLE",
+        "type": "object",
+        "description": "Ответ со списком счетов",
+        "properties": [
+          {
+            "name": "Data",
+            "type": "object",
+            "required": true,
+            "description": "Раздел данных полезной нагрузки ответа на запрос о списке счетов"
+          },
+          {
+            "name": "Links",
+            "type": "object",
+            "required": false,
+            "description": "Раздел для указания ссылок"
+          },
+          {
+            "name": "Meta",
+            "type": "object",
+            "required": false,
+            "description": "Раздел метаданных"
+          }
+        ]
+      },
+      {
+        "name": "BalanceResponseLE",
+        "type": "object",
+        "description": "Ответ с остатками по счетам",
+        "properties": [
+          {
+            "name": "Data",
+            "type": "object",
+            "required": true,
+            "description": "Раздел данных полезной нагрузки ответа"
+          },
+          {
+            "name": "Links",
+            "type": "object",
+            "required": false,
+            "description": "Раздел для указания ссылок"
+          },
+          {
+            "name": "Meta",
+            "type": "object",
+            "required": false,
+            "description": "Раздел метаданных"
+          }
+        ]
+      },
+      {
+        "name": "StatementInitRequest",
+        "type": "object",
+        "description": "Запрос инициализации выписки",
+        "properties": [
+          {
+            "name": "Data",
+            "type": "object",
+            "required": true,
+            "description": "Полезная нагрузка запроса"
+          }
+        ]
+      },
+      {
+        "name": "StatementInitResponse",
+        "type": "object",
+        "description": "Ответ на создание выписки",
+        "properties": [
+          {
+            "name": "Data",
+            "type": "object",
+            "required": true,
+            "description": "Раздел данных полезной нагрузки ответа"
+          },
+          {
+            "name": "Links",
+            "type": "object",
+            "required": false,
+            "description": "Раздел для указания ссылок"
+          },
+          {
+            "name": "Meta",
+            "type": "object",
+            "required": false,
+            "description": "Раздел метаданных"
+          }
+        ]
+      },
+      {
+        "name": "StatementStatementIdResponse",
+        "type": "object",
+        "description": "Ответ на запрос выписки по идентификатору",
+        "properties": [
+          {
+            "name": "Data",
+            "type": "object",
+            "required": true,
+            "description": "Раздел данных полезной нагрузки ответа"
+          },
+          {
+            "name": "Links",
+            "type": "object",
+            "required": false,
+            "description": "Раздел для указания ссылок"
+          },
+          {
+            "name": "Meta",
+            "type": "object",
+            "required": false,
+            "description": "Раздел метаданных"
+          }
+        ]
+      },
+      {
+        "name": "StatementAccountIdResponse",
+        "type": "object",
+        "description": "Ответ на запрос выписки по счёту",
+        "properties": [
+          {
+            "name": "Data",
+            "type": "object",
+            "required": true,
+            "description": "Раздел данных полезной нагрузки ответа"
+          },
+          {
+            "name": "Links",
+            "type": "object",
+            "required": false,
+            "description": "Раздел для указания ссылок"
+          },
+          {
+            "name": "Meta",
+            "type": "object",
+            "required": false,
+            "description": "Раздел метаданных"
+          }
+        ]
+      }
+    ],
+    "enums": []
+  },
+  "compliance": {
+    "standards": [
+      {
+        "code": "СТО БР ФАПИ.СЕК-1.6-2024",
+        "title": "Профиль безопасности OpenID/FAPI",
+        "link": ""
+      },
+      {
+        "code": "СТО БР ФАПИ.ПАОК-1.0-2024",
+        "title": "Аутентификация по отдельному каналу",
+        "link": ""
+      }
+    ],
+    "security_controls": [
+      {
+        "control": "OAuth2 + OIDC",
+        "scope": "Authorization Code",
+        "notes": "Требуется JWS для некоторых запросов"
+      }
+    ]
+  },
+  "change_log": [
+    {
+      "version": "2.0.0",
+      "date": "2025-10-07",
+      "changes": [
+        "Инициализация PoC HTML-рендера"
+      ]
+    }
+  ]
+}

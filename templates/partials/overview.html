@@ -1,0 +1,19 @@
+<section id="overview">
+  <h2>Обзор API</h2>
+  {% if api_overview.servers %}
+    <h3>Серверы</h3>
+    <ul>
+      {% for s in api_overview.servers %}
+        <li><code>{{ s.url }}</code>{% if s.description %} — {{ s.description | markdownInline }}{% endif %}{% if s.env %} ({{ s.env }}){% endif %}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if api_overview.security %}
+    <h3>Безопасность</h3>
+    <ul>
+      {% for sec in api_overview.security %}
+        <li>{{ sec.scheme }}{% if sec.description %} — {{ sec.description | markdownInline }}{% endif %}{% if sec.flows %} ({{ sec.flows | join(', ') }}){% endif %}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>

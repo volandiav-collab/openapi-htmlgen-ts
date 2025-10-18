@@ -1,0 +1,303 @@
+{% macro renderSchema(schema, meta=None) %}
+  {% set anchorId = meta.id if meta and meta.id else 'schema-' ~ schema.name %}
+  {% set schemaAnchorName = 'schema-' ~ schema.name %}
+  <article class="schema" id="{{ anchorId }}">
+    <a class="schema-anchor" id="{{ anchorId }}" name="{{ anchorId }}"></a>
+    {% if anchorId != schemaAnchorName %}
+      <a class="schema-anchor" id="{{ schemaAnchorName }}" name="{{ schemaAnchorName }}"></a>
+    {% endif %}
+    <h4>{{ schema.name }}</h4>
+    {% if meta %}
+      {% set metaItems = [] %}
+      {% if meta.method %}{% set metaItems = metaItems.concat(['Метод: <code>' ~ meta.method ~ '</code>']) %}{% endif %}
+      {% if meta.path %}{% set metaItems = metaItems.concat(['Путь: <code>' ~ meta.path ~ '</code>']) %}{% endif %}
+      {% if meta.status %}{% set metaItems = metaItems.concat(['Код ответа: <code>' ~ meta.status ~ '</code>']) %}{% endif %}
+      {% if meta.mediaType %}{% set metaItems = metaItems.concat(['Формат: <code>' ~ meta.mediaType ~ '</code>']) %}{% endif %}
+      {% if meta.sourceName %}{% set metaItems = metaItems.concat(['Источник схемы: <code>' ~ meta.sourceName ~ '</code>']) %}{% endif %}
+      {% if metaItems | length %}
+        <div class="schema-meta">{{ metaItems | join(' · ') | safe }}</div>
+      {% endif %}
+      {% if meta.summary %}
+        <div class="schema-summary md">{{ meta.summary | markdown }}</div>
+      {% endif %}
+    {% endif %}
+    {% if schema.displayType %}
+      <div class="schema-type">Тип: {{ schema.displayType }}</div>
+    {% endif %}
+    {% if schema.description %}<div class="md">{{ schema.description | markdown }}</div>{% endif %}
+    {% if schema.flatProperties %}
+      <table>
+        <thead><tr><th>Поле</th><th>Тип</th><th>Обяз.</th><th>Описание</th></tr></thead>
+        <tbody>
+          {% for p in schema.flatProperties %}
+            <tr class="schema-row {{ 'is-root' if p.depth == 0 else 'is-child' }}">
+              <td class="prop-name {{ 'is-root' if p.depth == 0 else 'is-child' }}" style="--depth: {{ p.depth }};">{{ p.name }}</td>
+              <td>
+                {% if p.ref %}
+                  <a href="#schema-{{ p.ref }}">{{ p.ref }}</a>
+                {% elif p.itemsRef %}
+                  array&lt;<a href="#schema-{{ p.itemsRef }}">{{ p.itemsRef }}</a>&gt;
+                {% elif p.itemsType %}
+                  array&lt;{{ p.itemsType }}&gt;
+                {% else %}
+                  {{ p.displayType or p.type or '—' }}
+                {% endif %}
+              </td>
+              <td>{{ 'Да' if p.required else 'Нет' }}</td>
+              <td>
+                {% if p.parentLabel == 'items' %}
+                  <div><em>Элемент массива</em></div>
+                {% endif %}
+                {% if p.description %}{{ p.description | markdownInline }}{% endif %}
+                {% if p.enum %}
+                  <div><strong>Значения:</strong> <code>{{ p.enum | join(', ') }}</code></div>
+                {% endif %}
+                {% if p.example is defined and p.example is not none %}
+                  <div><strong>Пример:</strong> <code>{{ p.example | json(2) }}</code></div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+    {% if schema.enum %}
+      <div class="schema-enum">
+        <strong>Возможные значения:</strong>
+        <code>{{ schema.enum | join(', ') }}</code>
+      </div>
+    {% endif %}
+    {% if schema.example is defined and schema.example is not none %}
+      <div class="schema-example">
+        <strong>Пример:</strong>
+        <code>{{ schema.example | json(2) }}</code>
+      </div>
+    {% endif %}
+  </article>
+{% endmacro %}
+
+{% macro renderEnum(item) %}
+  <article class="schema enum-card" id="enum-{{ item.name }}">
+    <a class="schema-anchor" id="enum-{{ item.name }}" name="enum-{{ item.name }}"></a>
+    <a class="schema-anchor" id="schema-{{ item.name }}" name="schema-{{ item.name }}"></a>
+    <h4>{{ item.name }}</h4>
+    {% if item.description %}
+      <div class="md">{{ item.description | markdown }}</div>
+    {% endif %}
+    {% if item.renderValuesTable is not defined or item.renderValuesTable %}
+      <table class="enum-table">
+        <thead>
+          <tr><th>Значение</th><th>Описание</th></tr>
+        </thead>
+        <tbody>
+        {% for value in item.values %}
+          <tr>
+            <td><code>{{ value.value }}</code></td>
+            <td>{{ value.description or '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </article>
+{% endmacro %}
+
+<section id="components" data-schema-mode="expanded">
+  <h2>Модели данных</h2>
+{% set grouped = components.groupedSchemas or {'request': [], 'response': [], 'object': [], 'enum': []} %}
+{% set requestSchemas = grouped.request %}
+{% set responseSchemas = grouped.response %}
+{% set objectSchemas = grouped.object %}
+{% set hasStructuredSchemas = (requestSchemas | length) + (responseSchemas | length) + (objectSchemas | length) %}
+  {% if hasStructuredSchemas and components.nestedEnabled %}
+    <div class="schema-controls">
+      <button type="button" class="schema-toggle" data-schema-toggle>Скрывать вложения</button>
+    </div>
+  {% endif %}
+
+  {% if requestSchemas | length %}
+    <div class="schema-section" data-schema-section="requests">
+      <h3>Объекты запросов</h3>
+      {% for item in requestSchemas %}
+        {{ renderSchema(item.schema, {
+          'id': item.id,
+          'method': item.method,
+          'path': item.path,
+          'mediaType': item.mediaType,
+          'sourceName': item.sourceName,
+          'summary': item.summary
+        }) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if responseSchemas | length %}
+    <div class="schema-section" data-schema-section="responses">
+      <h3>Объекты ответов</h3>
+      {% for item in responseSchemas %}
+        {{ renderSchema(item.schema, {
+          'id': item.id,
+          'method': item.method,
+          'path': item.path,
+          'status': item.status,
+          'mediaType': item.mediaType,
+          'sourceName': item.sourceName,
+          'summary': item.summary
+        }) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if objectSchemas | length %}
+    <div class="schema-section" data-schema-section="objects">
+      <h3>Объектные элементы</h3>
+      {% for schema in objectSchemas %}
+        {{ renderSchema(schema) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if components.enums and (components.enums | length) %}
+    <div class="schema-section" data-schema-section="enums">
+      <h3>Справочные объекты — enum</h3>
+      {% for enum in components.enums %}
+        {{ renderEnum(enum) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+{% macro renderHeaders(headers) %}
+  {% if headers and headers | length %}
+      {% set lines = [] -%}
+      {% for header in headers -%}
+        {% if header.example is not none and header.example is not undefined %}
+          {% set lines = lines.concat([header.name ~ ': ' ~ header.example]) %}
+        {% else %}
+          {% set lines = lines.concat([header.name ~ ': —']) %}
+        {% endif %}
+      {%- endfor %}
+      <pre><code>{{ lines | join('\n') }}</code></pre>
+  {% else %}
+      <div class="example-empty">—</div>
+  {% endif %}
+{% endmacro %}
+
+  {% macro renderPayload(payload) %}
+    {% if payload.example is not none and payload.example is not undefined %}
+      {% if payload.example is string %}
+        <pre><code>{{ payload.example }}</code></pre>
+      {% else %}
+        <pre><code class="language-json">{{ payload.example | json(2) }}</code></pre>
+      {% endif %}
+    {% else %}
+      <div class="example-empty">—</div>
+    {% endif %}
+  {% endmacro %}
+
+  {% if resources and (resources | length) %}
+    <div class="schema-section schema-examples" id="schema-examples">
+      <h3>Примеры</h3>
+      {% set primaryServer = (api_overview.servers and api_overview.servers[0]) or none %}
+      {% set baseUrl = (primaryServer and primaryServer.url) or '' %}
+      {% for resource in resources %}
+        <article class="example-resource">
+          <h4>{{ resource.tag }}</h4>
+          {% for endpoint in resource.endpoints %}
+            <div class="example-endpoint">
+              <div class="example-heading"><span class="method">{{ endpoint.method }}</span> <code>{{ endpoint.path }}</code></div>
+              {% if baseUrl %}
+                {% set command = "curl -X " ~ endpoint.method ~ " '" ~ baseUrl ~ endpoint.path ~ "'" %}
+              {% else %}
+                {% set command = "curl -X " ~ endpoint.method ~ " '" ~ endpoint.path ~ "'" %}
+              {% endif %}
+              <pre><code class="language-bash">{{ command }}</code></pre>
+              {% set example = endpoint.examples %}
+              {% if example and example.request %}
+                <div class="example-block">
+                  <h5>Запрос</h5>
+                  <div class="example-subblock">
+                    <div class="example-subheading">Заголовки</div>
+                    {{ renderHeaders(example.request.headers) }}
+                  </div>
+                  {% if example.request.payloads and (example.request.payloads | length) %}
+                    {% for payload in example.request.payloads %}
+                      <div class="example-subblock">
+                        <div class="example-subheading">Полезная нагрузка{% if payload.mediaType %} ({{ payload.mediaType }}){% endif %}</div>
+                        {{ renderPayload(payload) }}
+                      </div>
+                    {% endfor %}
+                  {% else %}
+                    <div class="example-subblock">
+                      <div class="example-subheading">Полезная нагрузка</div>
+                      <div class="example-empty">—</div>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+              {% if example and example.responses and (example.responses | length) %}
+                {% for response in example.responses %}
+                  {% if response.status|int < 400 %}
+                    <div class="example-block">
+                      <h5>Ответ {{ response.status }}</h5>
+                      <div class="example-subblock">
+                        <div class="example-subheading">Заголовки</div>
+                        {{ renderHeaders(response.headers) }}
+                      </div>
+                      {% if response.payloads and (response.payloads | length) %}
+                        {% for payload in response.payloads %}
+                          <div class="example-subblock">
+                            <div class="example-subheading">Полезная нагрузка{% if payload.mediaType %} ({{ payload.mediaType }}){% endif %}</div>
+                            {{ renderPayload(payload) }}
+                          </div>
+                        {% endfor %}
+                      {% else %}
+                        <div class="example-subblock">
+                          <div class="example-subheading">Полезная нагрузка</div>
+                          <div class="example-empty">—</div>
+                        </div>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endfor %}
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <script>
+    (function() {
+      var root = document.getElementById('components');
+      if (!root) return;
+      var toggle = root.querySelector('[data-schema-toggle]');
+      if (!toggle) return;
+      var storageKey = 'schemaDisplayMode';
+      var initialMode = 'expanded';
+      try {
+        var saved = localStorage.getItem(storageKey);
+        if (saved === 'links' || saved === 'expanded') {
+          initialMode = saved;
+        }
+      } catch (_) {
+        initialMode = 'expanded';
+      }
+      applyMode(initialMode);
+      toggle.addEventListener('click', function() {
+        var nextMode = root.dataset.schemaMode === 'expanded' ? 'links' : 'expanded';
+        applyMode(nextMode);
+        try {
+          localStorage.setItem(storageKey, nextMode);
+        } catch (_) {
+          /* ignore */
+        }
+      });
+      function applyMode(mode) {
+        root.dataset.schemaMode = mode;
+        toggle.textContent = mode === 'expanded' ? 'Скрывать вложения' : 'Показывать вложения';
+        toggle.setAttribute('aria-pressed', mode === 'links' ? 'true' : 'false');
+      }
+    })();
+  </script>
+</section>

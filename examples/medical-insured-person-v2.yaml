@@ -1,0 +1,1946 @@
+openapi: 3.1.0
+info:
+  title: Получение информации о застрахованных лицах
+  description: |
+
+    # Введение
+
+    Стандарт содержит описания модели данных и конечных точек АPI, предназначенных для обмена данными между страховыми организациями и медицинскими организациями через Открытые программные интерфейсы.
+    Информационный обмен между медицинской организацией и страховой организацией осуществляется посредством электронных сообщений, формируемых на стороне медицинской организации и на стороне страховой организации посредством Открытых данных.   
+
+    ## Термины и определения
+
+    В стандарте применяются термины и определения в соответствии с ФАПИ.СЕК, БФБО 1.8, СТО БР Открытые программные интерфейсы. Общие положения.
+
+    ## Область применения
+
+    Стандарт рекомендован к использованию организациями при обмене сообщениями, связанными с обменом данными между участниками финансового и нефинансового секторов в модели “Открытые данные”.
+    Стандарт используется страховой организацией для разработки интерфейсов, которые они предоставляют для медицинской организацией.
+    Стандарт используется медицинской организацией организации для реализации взаимодействий со страховой организацией через Открытые программные интерфейсы.
+
+    Стандарт предназначен для:
+
+      - участников получения публичной информации об услугах медицинских организаций (медицинские организации и их клиенты);
+      - участников получения информации о застрахованных клиентах (страховые организации и их клиенты);
+      - разработчиков информационного и программного обеспечения, информационных систем.  
+
+    ### Положения настоящего стандарта применяются совместно со следующими документами:
+
+      МР.26.2.002─2024. Методические рекомендации ТК 26. Информационная технология. Криптографическая защита информации. Использование российских криптографических алгоритмов в протоколах OpenID Connect (далее МР OIDC).
+      СТО БР ФАПИ.СЕК-1.6-2024 Стандарт Банка России "Безопасность финансовых (банковских) операций. Прикладные программные интерфейсы обеспечения безопасности финансовых сервисов на основе протокола OpenID" (далее ФАПИ.СЕК).
+      СТО БР Открытые программные интерфейсы. Общие положения.
+      СТО БР Открытые программные интерфейсы. Глоссарий.
+      СТО БР Открытые программные интерфейсы. Общие требования к прикладным стандартам.
+
+    ### Принципы архитектуры
+      За основу создания среды Открытых программных интерфейсов на основании отзывов участников рынка, а также согласно опыту мировых практик взят архитектурный стиль RESTful API , что позволяет создавать простые и понятные для взаимодействия API.
+    ### Физический уровень описания сообщений
+      На физическом уровне при проектировании сообщений используется язык описания интерфейсов `OpenAPI 3-й версии` в формате `YAML`.
+    ### Управление версиями API
+      Управление версиями API осуществляется согласно подходу `Semantic Versioning 2.0.0`.
+
+    ## URI структура пути ресурса
+
+    ### Путь ресурса URI должен соответствовать следующей структуре: 
+      `[participant-path-prefix]/open-data]/[version]/[resource-group]/[resource]/[resource-id]`.
+    ### URI cтруктура пути ресурса состоит из следующих элементов:
+      - `[participant-path-prefix]` – необязательный префикс;
+      - `open-data` – постоянное значение "open-data";
+      - `[version]` – версия API, выраженная в виде /v[major-version].[minor-version]/;
+      - `[resource-group]` - идентификатор группы конечных точек, в соответствии с ролью участника;
+      - `[resource]/[resource-id]` – наименование ресурса и его идентификатор (например, /accounts/1112345678).
+
+
+    Примеры:
+
+    ~~~http
+      https://example.ru/oapi-channel/open-data/v1.0/mfsp/insured-persons
+    ~~~
+
+
+    ## Общее описание процесса
+
+    Данный раздел спецификации описывает последовательность взаимодействий между
+    страховой компанией (СК) и медицинской организацией (МО) при передаче списка застрахованных лиц
+    по договорам добровольного медицинского страхования (ДМС) через Открытые API.
+
+    Обмен данными осуществляется в защищённой среде с применением TLS 1.2+/ГОСТ, mTLS
+    и подписей JWS в соответствии с требованиями Приказа Минздрава РФ № 911н и Приказа ФСТЭК № 21.
+
+    ### Диаграмма взаимодействия
+    <img alt="Диаграмма процесса" src="static/openapi-images/insured-person-sequence.svg" />
+
+    ### Последовательность взаимодействий
+
+    #### Шаг 1. Callback-уведомление от СК
+    **Описание:** СК уведомляет МО о готовности нового или изменённого списка застрахованных лиц.
+    Передача выполняется через POST `/notifications/insured-persons` на сервер нотификаций МО.
+    **Пример запроса:**
+    ```http
+    POST /notifications/insured-persons HTTP/1.1
+    Host: notif.mo.example.ru
+    Content-Type: application/json
+    X-JWS-Signature: <Подпись JWS>
+    Authorization: Bearer <access_token>
+
+    {
+      "link": "https://rs.sk.example.ru/open-data/v1.0/mfsp/insured-persons/ax-111-111111110",
+      "insuredPersonId": "ax-111-111111110",
+      "action": "Attachment",
+      "createdAt": "2025-08-05T10:00:00Z"
+    }
+    ```
+
+    #### Шаг 2. Получение access token МО
+    **Описание:** МО запрашивает у СК токен доступа по OAuth 2.0 (grant_type=client_credentials, private_key_jwt ГОСТ)
+    для вызова API `/insured-persons`.
+    **Пример запроса:**
+    ```http
+    POST /as/aft/connect/token HTTP/1.1
+    Host: as.sk.example.ru
+    Content-Type: application/x-www-form-urlencoded
+
+    grant_type=client_credentials&
+    client_id=urn:uuid:97ed4827-7b6f-4491-a06f-b548d5a7512d&
+    client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&
+    client_assertion=<JWT_подписанный_ГОСТ>&
+    scope=insuredperson
+    ```
+
+    #### Шаг 3. Запрос МО к СК на получение списка ЗЛ
+    **Описание:** МО, используя полученный access_token, запрашивает полный список застрахованных лиц
+    по идентификатору, переданному в уведомлении.
+    **Пример запроса:**
+    ```http
+    GET /open-data/v1.0/mfsp/insured-persons/ax-111-111111110 HTTP/1.1
+    Host: rs.sk.example.ru
+    Authorization: Bearer eyJhbGciOiJ...
+    Accept: application/json
+    x-fapi-interaction-id: 97ed4827-7b6f-4491-a06f-b548d5a7512d
+    ```
+
+    #### Шаг 4. Callback-уведомление от МО о статусе
+    **Описание:** МО уведомляет СК о результате обработки списка (успешно, частично с ошибками).
+    Формат соответствует схеме `InsuredPersonListProcessingStatus.yaml`.
+    **Примеры:**
+
+    - Все записи успешно обработаны:
+      
+    ```http
+    POST /insured-persons/status HTTP/1.1
+    Host: notif.sk.example.ru
+    Content-Type: application/json
+    X-JWS-Signature: <Подпись ГОСТ>
+    ```
+    
+    ```json
+    {
+      "insuredPersonId": "7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e",
+      "status": "processed",
+      "processedAt": "2025-06-27T16:10:00Z",
+      "InsuredPersonSummary": {
+        "totalRecords": 100,
+        "acceptedRecords": 100,
+        "rejectedRecords": 0
+      }
+    }
+    ```
+
+    - Часть записей с ошибками по застрахованным лицам:
+
+    ```http
+    POST /insured-persons/status HTTP/1.1
+    Host: notif.sk.example.ru
+    Content-Type: application/json
+    X-JWS-Signature: <Подпись ГОСТ>
+    ```
+    ```json
+    {
+      "insuredPersonId": "7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e",
+      "status": "processed",
+      "processedAt": "2025-06-27T16:10:00Z",
+      "InsuredPersonSummary": {
+        "totalRecords": 100,
+        "acceptedRecords": 98,
+        "rejectedRecords": 2
+      },
+      "InsuredPersonIssue": [
+        {
+          "seriesAndNumberDms": "DMS-0001-01-2025",
+          "errorCode": "INVALID_SNILS",
+          "message": "Некорректный формат СНИЛС"
+        },
+        {
+          "seriesAndNumberDms": "DMS-0003-03-2025",
+          "errorCode": "PROGRAM_NOT_FOUND",
+          "message": "Указанная программа страхования не зарегистрирована в МО"
+        }
+      ]
+    }
+    ```
+
+    - Отклонено целиком (ошибка верхнего уровня):
+
+    ```http
+    POST /insured-persons/status HTTP/1.1
+    Host: notif.sk.example.ru
+    Content-Type: application/json
+    X-JWS-Signature: <Подпись ГОСТ>
+    ```
+    ```json
+    {
+      "insuredPersonId": "7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e",
+      "status": "rejected",
+      "processedAt": "2025-06-27T16:10:00Z",
+      "TopLevelIssues": [
+        {
+          "errorCode": "CONTRACT_MISMATCH",
+          "message": "Договор ДМС не найден или не активен",
+          "documentNumber": "DMS-12234-10\2023-F"
+        }
+      ],
+      "InsuredPersonSummary": {
+        "totalRecords": 100,
+        "acceptedRecords": 0,
+        "rejectedRecords": 100
+      }
+    }
+    ```
+
+    ## Безопасность и контроль доступа
+
+    **Защищённые каналы связи** передача данных осуществляется по защищённым каналам (TLS 1.2+ или ГОСТ TLS) с обязательной взаимной аутентификацией (mTLS).<br>
+    **Электронная подпись:** все сообщения подписываются в формате JWS с использованием алгоритмов ГОСТ, что гарантирует идентификацию отправителя и целостность передаваемых данных.<br>
+    **Аутентификация и авторизация:** реализуются по протоколу OAuth 2.0 с применением механизма private_key_jwt и профиля client_credentials.<br>
+    **Токен доступа:** каждый вызов к конечной точке API в среде Открытых программных интерфейсов должен содержать действительный токен доступа в заголовке HTTP Authorization: Bearer <access_token>.<br>
+    **Получение токена:** Потребитель услуг (ПУ) передаёт свои учётные данные (client credentials) и проходит аутентификацию на конечной точке токена в соответствии с OAuth 2.0.<br>
+    **Область действия токена:** токен доступа, используемый для работы с API, должен иметь область действия (scope) не менее insuredperson — для получения информации о застрахованных лицах.<br>
+    **Соответствие нормативным требованиям:**
+      - Приказ Минздрава РФ № 911н — в части защиты информации, соблюдения форматов и использования нормативно-справочной информации (НСИ) при обмене медицинскими данными;
+      - Приказ ФСТЭК РФ № 21 — в части организационных и технических мер защиты персональных данных при их обработке в информационных системах персональных данных (ИСПДн);
+      - МР OIDC.
+
+    ## Идентификатор изменения ресурса 
+
+      Медицинская организация может возвращать в заголовке HTTP уникальный идентификатор ресурса Etag, с помощью которого страховая организация может определять, изменился ли ресурс с момента последнего запроса.
+  version: 1.2.2
+  termsOfService: https://openbanking.ru/terms
+  contact:
+    name: Ассоциация развития финансовых технологий (Ассоциация ФинТех)
+    url: https://fintechru.org
+    email: info@fintechru.org
+  license:
+    name: open-licence
+    url: https://openbankingrussia.ru
+  x-logo:
+    url: static/logo.svg
+    altText: Открытые данные
+    href: https://openbankingrussia.ru/
+servers:
+  - url: https://sb0.openbankingrussia.ru/sandbox0/open-banking/v1.0/mfsp
+    description: Эмулятор Сервера Ресурсов Поставщика услуг Песочница 0
+tags:
+  - name: InsuredPerson - Список застрахованных лиц
+    description: Содержание списка застрахованных лиц по договорам добровольного медицинского страхования
+paths:
+  /insured-persons:
+    get:
+      tags:
+        - InsuredPerson - Список застрахованных лиц
+      summary: Список застрахованных лиц по договорам добровольного медицинского страхования
+      description: |-
+        Конечная точка позволяет получить список застрахованных лиц по договорам добровольного медицинского страхования 
+        <img alt="UML диаграмма" src="static/openapi-images/insured-person-v2.svg" />
+      operationId: getInsuredPerson
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/If-Modified-Since'
+        - $ref: '#/components/parameters/If-None-Match'
+      responses:
+        '200':
+          $ref: '#/components/responses/200InsuredPerson'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '406':
+          $ref: '#/components/responses/406Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+      security:
+        - TPPInsuredPersonOAuth2Security:
+            - insuredperson
+    head:
+      operationId: headInsuredPerson
+      tags:
+        - InsuredPerson - Список застрахованных лиц
+      summary: Получение информации о заголовках HTTP
+      description: |
+        Получение информации о заголовках HTTP ресурса
+        ППД может возвращать в заголовке HTTP уникальный идентификатор ресурса `Etag`,
+        с помощью которого СППД может определить, изменился ли ресурс с момента последнего запроса. 
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/x-fapi-interaction-id'
+        - $ref: '#/components/parameters/x-fapi-customer-ip-address'
+        - $ref: '#/components/parameters/x-customer-user-agent'
+        - $ref: '#/components/parameters/If-Modified-Since'
+        - $ref: '#/components/parameters/If-None-Match'
+      responses:
+        '200':
+          $ref: '#/components/responses/200Head'
+        '304':
+          $ref: '#/components/responses/304NotModified'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '401':
+          $ref: '#/components/responses/401Error'
+        '403':
+          $ref: '#/components/responses/403Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '405':
+          $ref: '#/components/responses/405Error'
+        '406':
+          $ref: '#/components/responses/406Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+      security:
+        - TPPInsuredPersonOAuth2Security:
+            - insuredperson
+  /notifications/insured-persons:
+    post:
+      tags:
+        - Notifications Callback
+      summary: Callback-уведомление от СК к Серверу нотификаций о готовности списка застрахованных лиц
+      description: |
+        Страховая компания уведомляет медицинскую организацию о доступности списка застрахованных лиц по ДМС.
+      operationId: notifyInsuredPersonListReady
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - insuredPersonId
+                - actionWithInsuredPerson
+                - createdAt
+                - link
+              properties:
+                insuredPersonId:
+                  type: string
+                  format: uuid
+                  description: Уникальный идентификатор списка застрахованных лиц
+                actionWithInsuredPerson:
+                  type: string
+                  description: Действие с застрахованными лицами. Обязательное поле.
+                  example: Attachment
+                  enum:
+                    - Attachment
+                    - Detachment
+                    - Changment
+                  x-enum-descriptions:
+                    - Прикрепление
+                    - Открепление
+                    - Изменение
+                  x-enum-varnames:
+                    - Attachment
+                    - Detachment
+                    - Changment
+                createdAt:
+                  type: string
+                  format: date-time
+                  description: Дата и время формирования пакета
+                  example: '2025-06-27T11:20:00Z'
+                link:
+                  type: string
+                  format: uri
+                  description: Ссылка на список застрахованных лиц
+                  example: https://sk.example.ru/api/insured-persons/abc1234-def-5678
+      responses:
+        '202':
+          description: Уведомление успешно принято
+        '400':
+          description: Неверный формат уведомления
+        '401':
+          description: Неавторизованный запрос
+        '403':
+          description: Доступ запрещён
+        '500':
+          description: Внутренняя ошибка
+      security:
+        - TPPInsuredPersonOAuth2Security:
+            - insuredperson
+  /insured-persons/status:
+    post:
+      tags:
+        - Notifications
+      summary: Callback-уведомление от МО о статусе обработки списка застрахованных лиц
+      description: |
+        Медицинская организация подтверждает приём списка и отправляет информацию о статусе обработки в адрес страховой компании.
+      operationId: notifyInsuredPersonProcessingStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsuredPersonListProcessingStatus'
+            examples:
+              allAccepted:
+                summary: Все записи успешно обработаны
+                value:
+                  insuredPersonId: 7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e
+                  status: processed
+                  processedAt: '2025-06-27T16:10:00Z'
+                  InsuredPersonSummary:
+                    totalRecords: 100
+                    acceptedRecords: 100
+                    rejectedRecords: 0
+              partialWithErrors:
+                summary: Часть записей отклонена
+                value:
+                  insuredPersonId: 7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e
+                  status: processed
+                  processedAt: '2025-06-27T16:10:00Z'
+                  InsuredPersonSummary:
+                    totalRecords: 100
+                    acceptedRecords: 98
+                    rejectedRecords: 2
+                  InsuredPersonIssue:
+                    - seriesAndNumberDms: DMS-0001-01-2025
+                      errorCode: INVALID_SNILS
+                      message: Некорректный формат СНИЛС
+                    - seriesAndNumberDms: DMS-0003-03-2025
+                      errorCode: PROGRAM_NOT_FOUND
+                      message: Указанная программа страхования не зарегистрирована в МО
+              pending:
+                summary: Обработка ещё выполняется
+                value:
+                  insuredPersonId: 7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e
+                  status: pending
+                  processedAt: '2025-06-27T16:10:00Z'
+                  InsuredPersonSummary:
+                    totalRecords: 100
+                    acceptedRecords: 0
+                    rejectedRecords: 0
+              rejectedAll:
+                summary: Список отклонён целиком (ошибка верхнего уровня)
+                value:
+                  insuredPersonId: 7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e
+                  status: rejected
+                  processedAt: '2025-06-27T16:10:00Z'
+                  TopLevelIssues:
+                    - errorCode: CONTRACT_MISMATCH
+                      message: Договор ДМС не найден или не активен
+                      documentNumber: DMS-12234-10\2023-F
+                  InsuredPersonSummary:
+                    totalRecords: 100
+                    acceptedRecords: 0
+                    rejectedRecords: 100
+      responses:
+        '202':
+          description: Статус успешно зарегистрирован
+        '400':
+          description: Неверные данные
+        '401':
+          description: Неавторизованный запрос
+        '403':
+          description: Запрос отклонён
+        '500':
+          description: Внутренняя ошибка сервера
+      security:
+        - TPPInsuredPersonOAuth2Security:
+            - insuredperson
+components:
+  securitySchemes:
+    TPPInsuredPersonOAuth2Security:
+      type: oauth2
+      description: Сторонний поставщик использует поток авторизации сlient сredentional для доступа к ресурсам Поставщика услуг
+      flows:
+        clientCredentials:
+          tokenUrl: https://sb0.openbankingrussia.ru/sandbox0/as/aft/connect/token
+          scopes:
+            insuredperson: возможность получать информацию о застрахованных лицах
+  parameters:
+    page:
+      name: page
+      in: query
+      required: false
+      description: Номер страницы
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 5000
+        default: 1
+    If-Modified-Since:
+      in: header
+      name: if-modified-since
+      schema:
+        type: string
+        format: date-time
+      required: false
+      description: Фильтрации по времени модификации. Возвращает только те ресурсы, которые были изменены с указанного времени обращения
+    If-None-Match:
+      in: header
+      name: if-none-match
+      schema:
+        type: string
+        format: uuid
+      required: false
+      description: Фильтрации по идентификатору данных. Возвращает ресурс только в случае если представленное значение Etag не совпадает с текущим
+    x-fapi-interaction-id:
+      in: header
+      name: x-fapi-interaction-id
+      required: true
+      description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      schema:
+        type: string
+        format: uuid
+        description: Универсальный уникальный идентификатор (UUID) версии 4, в соответствии с IETC RFC 4122 "Universally Unique IDentifier (UUID) URN Namespace".
+      example: 97ed4827-7b6f-4491-a06f-b548d5a7512d
+    x-fapi-customer-ip-address:
+      in: header
+      name: x-fapi-customer-ip-address
+      schema:
+        type: string
+        minLength: 0
+        maxLength: 21
+        pattern: ^([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(\d{1,3}\.){3}\d{1,3}$
+        example: 172.123.123.123
+      required: false
+      description: IP-адрес Пользователя, если Пользователь в данный момент подключен к Стороннему Поставщику (авторизован в приложении Стороннего Поставщика).
+    x-customer-user-agent:
+      in: header
+      name: x-customer-user-agent
+      schema:
+        type: string
+      description: В заголовке указывается тип устройства (user-agent), который использует Пользователь. Сторонний Поставщик может заполнить это поле значением типа устройства (user-agent), указанным Пользователем. Если Пользователь использует мобильное приложение Стороннего Поставщика, Сторонний Поставщик проверяет, что строка типа устройства (user-agent) отличается от строки типа устройства (user-agent) на основе браузера.
+      required: false
+      example: mobile
+  schemas:
+    Contractor:
+      type: object
+      description: Сведения об участнике факта хозяйственной жизни исполнителя
+      additionalProperties: false
+      required:
+        - LegalEntity
+      properties:
+        LegalEntity:
+          description: Сведения о юридическом лице - исполнителе
+          type: object
+          additionalProperties: false
+          required:
+            - organizationInn
+            - organizationKpp
+            - organizationName
+            - organizationId
+          properties:
+            organizationId:
+              description: Уникальный и неизменный идентификатор, используемый для идентификации ресурса организации - юридического лица
+              type: string
+              format: uuid
+              example: b1c4efe2-6992-4794-a256-4094a259ec07
+            organizationName:
+              description: Полное наименование организации
+              type: string
+              pattern: ^[\w\W]{1,1000}$
+              minLength: 1
+              maxLength: 1000
+              example: Общество с ограниченной ответственностью «Сеть медицинских клиник»
+            organizationInn:
+              description: ИННЮЛ
+              type: string
+              minItems: 1
+              maxItems: 10
+              pattern: ^[\w\W]{10}$
+              example: '7728240000'
+            organizationKpp:
+              description: КПП
+              type: string
+              minItems: 1
+              maxItems: 9
+              pattern: ^[\w\W]{9}$
+              example: '770201001'
+    LegalEntity:
+      description: Сведения о юридическом лице
+      type: object
+      additionalProperties: false
+      required:
+        - organizationInn
+        - organizationName
+        - organizationId
+        - organizationKpp
+      properties:
+        organizationId:
+          description: Уникальный и неизменный идентификатор, используемый для идентификации ресурса организации - юридического лица
+          type: string
+          format: uuid
+          example: 5860881e-7df3-4cba-86e7-7f2d857e108f
+        organizationName:
+          description: Полное наименование организации
+          type: string
+          pattern: ^[\w\W]{1,1000}$
+          minLength: 1
+          maxLength: 1000
+          example: Акционерное общество «Страховая/Медицинская организация»
+        organizationInn:
+          description: ИННЮЛ
+          type: string
+          minItems: 1
+          maxItems: 10
+          pattern: ^[\w\W]{10}$
+          example: '7728241111'
+        organizationKpp:
+          description: КПП
+          type: string
+          minItems: 1
+          maxItems: 9
+          pattern: ^[\w\W]{9}$
+          example: '770201001'
+    AddressBranch:
+      type: object
+      description: Сведения об адресе подразделения (на территории РФ)
+      properties:
+        postalCode:
+          type: string
+          minLength: 6
+          maxLength: 6
+          pattern: ^\d{6}$
+          example: '125047'
+          description: Почтовый индекс
+        regionCode:
+          type: string
+          minLength: 2
+          maxLength: 2
+          pattern: ^\d{2}$
+          example: '77'
+          description: Код субъекта Российской Федерации
+        regionName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Г. Москва
+          description: Наименование субъекта Российской Федерации
+        district:
+          type: string
+          example: Тверской
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          description: Район
+        city:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: Москва
+          description: Город
+        locality:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: город Москва
+          description: Населенный пункт
+        street:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: 1-я Тверска́я-Ямска́я
+          description: Улица
+        house:
+          type: string
+          pattern: ^[\w\W]{1,20}$
+          minLength: 1
+          maxLength: 20
+          example: '10'
+          description: Дом
+        building:
+          type: string
+          pattern: ^[\w\W]{1,20}$
+          minLength: 1
+          maxLength: 20
+          example: '1'
+          description: Корпус
+        apartment:
+          type: string
+          pattern: ^[\w\W]{1,20}$
+          minLength: 1
+          maxLength: 20
+          example: '1'
+          description: Квартира
+        otherDetails:
+          type: string
+          pattern: ^[\w\W]{1,1000}$
+          minLength: 1
+          maxLength: 1000
+          example: Помещение №1
+          description: Иные сведения об адресе в Российской Федерации
+      required:
+        - regionCode
+        - regionName
+    Customer:
+      type: object
+      description: Сведения об участнике факта хозяйственной жизни заказчика
+      additionalProperties: false
+      required:
+        - LegalEntity
+      properties:
+        LegalEntity:
+          $ref: '#/components/schemas/LegalEntity'
+        Address:
+          description: Сведения об адресе заказчика
+          allOf:
+            - $ref: '#/components/schemas/AddressBranch'
+    Branch:
+      type: object
+      description: Сведения об участнике факта хозяйственной жизни филиала/подразделения
+      additionalProperties: false
+      required:
+        - LegalEntity
+      properties:
+        LegalEntity:
+          $ref: '#/components/schemas/LegalEntity'
+        Address:
+          description: Сведения об адресе подразделения
+          allOf:
+            - $ref: '#/components/schemas/AddressBranch'
+    ActiveOrHistoricCurrencyCode:
+      description: Код валюты, соответствующий международному стандарту ISO 4217
+      type: string
+      pattern: ^[A-Z]{3,3}$
+      example: RUB
+    ConventionalUnits:
+      description: Условные единицы
+      type: string
+      example: У.Е.
+      enum:
+        - У.Е.
+      x-enum-descriptions:
+        - Условные единицы
+      x-enum-varnames:
+        - ConventionalUnits
+    CurrencyInfo:
+      type: object
+      properties:
+        Сurrency:
+          description: Валюта расчета в виде кода или условные единицы
+          oneOf:
+            - $ref: '#/components/schemas/ActiveOrHistoricCurrencyCode'
+            - $ref: '#/components/schemas/ConventionalUnits'
+        сurrencyName:
+          type: string
+          description: Наименование валюты
+          pattern: ^.{1,100}$
+          minLength: 1
+          maxLength: 100
+          example: Рубль
+    Franchise:
+      type: object
+      description: Франшиза по программе, может быть выражена в процентах или в денежной сумме
+      additionalProperties: false
+      required:
+        - type
+        - value
+      properties:
+        type:
+          type: string
+          description: Тип франшизы
+          enum:
+            - percent
+            - amount
+          example: amount
+        value:
+          type: string
+          description: Значение франшизы (процент или сумма в валюте взаиморасчета)
+          pattern: ^\d{1,15}(\.\d{1,4})?$
+          example: '10.00'
+    InsuredPersonProgramm:
+      type: object
+      description: Информация о программе страхования и связанных с ней рисках
+      additionalProperties: false
+      properties:
+        programName:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          description: Наименование программы добровольного медицинского страхования
+          example: Стандарт
+        programCode:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          description: Код программы добровольного медицинского страхования
+          example: StandartAdult
+        paymentType:
+          type: string
+          description: Тип оплаты
+          example: '0'
+          enum:
+            - '0'
+            - '1'
+          x-enum-descriptions:
+            - Факт
+            - Аванс
+          x-enum-varnames:
+            - Fact
+            - Advance
+        agreedTreatmentLimit:
+          description: Лимит ответственности по согласованному объему лечения
+          example: '5000.00'
+          type: string
+          pattern: ^\d{1,15}\.\d{2,4}$
+        СurrencyInfo:
+          description: Валюта взаиморасчета
+          allOf:
+            - $ref: '#/components/schemas/CurrencyInfo'
+        Franchise:
+          description: Франшиза по программе (либо процент, либо фиксированная сумма)
+          allOf:
+            - $ref: '#/components/schemas/Franchise'
+        InsuranceRisks:
+          type: array
+          description: Риски программы добровольного медицинского страхования.
+          items:
+            type: object
+            description: Информация о программе страхования и связанных с ней рисках
+            additionalProperties: false
+            required:
+              - riskCode
+            properties:
+              riskCode:
+                description: Дополнительная информация, связанная с риском.
+                type: string
+                pattern: ^[\w\W]{1,35}$
+                minLength: 1
+                maxLength: 35
+              riscShortName:
+                description: Дополнительная информация, связанная с риском.
+                type: string
+                pattern: ^[\w\W]{1,70}$
+                minLength: 1
+                maxLength: 70
+                example:
+                  - Амбулаторно-поликлиническая помощь
+              riscDescriptions:
+                description: Дополнительная информация, связанная с риском.
+                type: string
+                pattern: ^[\w\W]{1,255}$
+                minLength: 1
+                maxLength: 255
+      required:
+        - programName
+        - InsuranceRisks
+    AddressRFType:
+      type: object
+      description: Сведения об адресе физического лица
+      properties:
+        postalCode:
+          type: string
+          minLength: 6
+          maxLength: 6
+          pattern: ^\d{6}$
+          example: '125047'
+          description: Почтовый индекс
+        regionCode:
+          type: string
+          minLength: 2
+          maxLength: 2
+          pattern: ^\d{2}$
+          example: '77'
+          description: Код субъекта Российской Федерации
+        regionName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Г. Москва
+          description: Наименование субъекта Российской Федерации
+        district:
+          type: string
+          example: Тверской
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          description: Район
+        city:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: Москва
+          description: Город
+        locality:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: город Москва
+          description: Населенный пункт
+        street:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: 1-я Тверска́я-Ямска́я
+          description: Улица
+        house:
+          type: string
+          pattern: ^[\w\W]{1,20}$
+          minLength: 1
+          maxLength: 20
+          example: '10'
+          description: Дом
+        building:
+          type: string
+          pattern: ^[\w\W]{1,20}$
+          minLength: 1
+          maxLength: 20
+          example: '1'
+          description: Корпус
+        apartment:
+          type: string
+          pattern: ^[\w\W]{1,20}$
+          minLength: 1
+          maxLength: 20
+          example: '1'
+          description: Квартира
+        otherDetails:
+          type: string
+          pattern: ^[\w\W]{1,1000}$
+          minLength: 1
+          maxLength: 1000
+          example: Помещение №1
+          description: Иные сведения об адресе в Российской Федерации
+      required:
+        - regionCode
+        - regionName
+    IdentityDocumentInfo:
+      description: Сведения о документе, удостоверяющем личность
+      type: object
+      properties:
+        documentType:
+          type: string
+          enum:
+            - '07'
+            - '10'
+            - '11'
+            - '12'
+            - '13'
+            - '15'
+            - '19'
+            - '21'
+            - '24'
+          x-enum-descriptions:
+            - Военный билет
+            - Паспорт иностранного гражданина
+            - Свидетельство о рассмотрении ходатайства о признании лица беженцем
+            - Вид на жительство в Российской Федерации
+            - Удостоверение беженца
+            - Разрешение на временное проживание в Российской Федерации
+            - Свидетельство о предоставлении временного убежища
+            - Паспорт гражданина Российской Федерации
+            - Удостоверение личности военнослужащего Российской Федерации
+          x-enum-varnames:
+            - MilitaryID
+            - ForeignPassport
+            - PreRefugeeID
+            - ResidencePermit
+            - RefugeeID
+            - TemporaryResidencePermit
+            - TemporaryAsylumCertificate
+            - Passport
+            - SoldierIdentityCard
+          description: Код вида документа
+          example: '21'
+        seriesAndNumber:
+          type: string
+          pattern: ^[A-Z0-9-]{1,25}$
+          description: Серия и номер документа (Series and Number).
+          example: 1234-567890
+        issueDate:
+          type: string
+          pattern: ^\d{2}\.\d{2}.\d{4}$
+          description: Дата выдачи документа (Issue Date) in DD.MM.YYYY format.
+          example: 01.01.2010
+        issuingAuthority:
+          type: string
+          maxLength: 255
+          description: Наименование органа, выдавшего документ (Issuing Authority).
+          example: МВД России
+        departmentCode:
+          type: string
+          pattern: ^\d{7}$
+          description: Код подразделения органа, выдавшего документ (Department Code).
+          example: '1234567'
+      required:
+        - documentType
+        - seriesAndNumber
+        - issueDate
+    FioContact:
+      type: object
+      description: Фамилия, имя, отчество физического лица
+      additionalProperties: false
+      required:
+        - familyName
+        - name
+      properties:
+        familyName:
+          description: Фамилия
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: Иванов
+        name:
+          description: Имя
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: Иван
+        patronymic:
+          description: Отчество
+          type: string
+          pattern: ^[\w\W]{1,60}$
+          minLength: 1
+          maxLength: 60
+          example: Иванович
+    ContactInfo:
+      type: object
+      description: Контактные данные
+      properties:
+        phoneNumberFax:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: +1 (123) 456-7890
+          description: Номер контактного телефона/факс
+        emailAddress:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$
+          example: example@example.com
+          description: Адрес электронной почты
+    IndividualInfo:
+      type: object
+      description: Сведения о физическом лице
+      properties:
+        birthDate:
+          type: string
+          pattern: ^\d{2}\.\d{2}.\d{4}$
+          description: Дата рождения (Date of Birth) in DD.MM.YYYY format.
+          example: 01.01.1980
+        snils:
+          type: string
+          pattern: ^\d{3}-\d{3}-\d{3}-\d{2}$
+          description: Уникальный номер индивидуального лицевого счета лица
+          example: 123-456-789-01
+        gender:
+          type: string
+          enum:
+            - '1'
+            - '2'
+          x-enum-descriptions:
+            - Мужской
+            - Женский
+          x-enum-varnames:
+            - male
+            - female
+          description: Пол физического лица
+          example: '1'
+        Address:
+          description: Сведения об адресе физического лица
+          allOf:
+            - $ref: '#/components/schemas/AddressRFType'
+        addressString:
+          type: string
+          pattern: ^[\w\W]{1,500}$
+          minLength: 1
+          maxLength: 500
+          description: Адрес строкой
+          example: Москва, ул. Тверская, д. 1, кв. 1, код домофона (#2234)
+        IdentityDocumentInfo:
+          description: Сведения о документе, удостоверяющем личность
+          allOf:
+            - $ref: '#/components/schemas/IdentityDocumentInfo'
+        identityDocumentInfoString:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          description: Паспортные данные строкой
+          example: Паспорт РФ 1111 111111 выдан ОВД г. Москвы 01.12.2010
+        omsPolicyNumber:
+          type: string
+          pattern: ^\d{16}$
+          maxLength: 16
+          description: Номер полиса обязательного медицинского страхования
+          example: '1111111111111110'
+        position:
+          type: string
+          pattern: ^[\w\W]{1,150}$
+          minLength: 1
+          maxLength: 150
+          description: Должность
+          example: Менеджер
+        category:
+          type: string
+          pattern: ^[\w\W]{1,150}$
+          minLength: 1
+          maxLength: 150
+          description: Категория застрахованного лица
+          example: ВИП
+        employerInfo:
+          type: string
+          pattern: ^[\w\W]{1,500}$
+          minLength: 1
+          maxLength: 500
+          example: ООО "организация Тест"
+          description: Сведения о работодателе
+        employerType:
+          type: string
+          pattern: ^[\w\W]{1,100}$
+          minLength: 1
+          maxLength: 100
+          description: Отношение к работодателю
+          example: Член семьи
+        FioContact:
+          description: Фамилия, имя, отчество физического лица
+          allOf:
+            - $ref: '#/components/schemas/FioContact'
+        ContactInfo:
+          description: Контактные данные
+          allOf:
+            - $ref: '#/components/schemas/ContactInfo'
+      required:
+        - birthDate
+        - FioContact
+    InsuredPersonContent:
+      type: object
+      description: Тип сведений застрахованного лица
+      additionalProperties: false
+      properties:
+        seriesAndNumberDms:
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          description: Серия и номер полиса добровольного медицинского страхования
+          example: DMS-22222-3-23
+        startDate:
+          type: string
+          description: Дата начала действия полиса добровольного медицинского страхования
+          example: 01.01.2023
+          format: date
+        endDate:
+          type: string
+          description: Дата окончания действия полиса добровольного медицинского страхования
+          example: 31.12.2023
+          format: date
+        InsuredProgramms:
+          description: Программы страхования
+          type: array
+          items:
+            $ref: '#/components/schemas/InsuredPersonProgramm'
+        InsuredPersonDetails:
+          type: object
+          description: Сведения о физическом лице
+          allOf:
+            - $ref: '#/components/schemas/IndividualInfo'
+        additionalInfo:
+          type: string
+          description: Информационное поле
+          example: По программе стоматология только экстренные обращения (с зубной болью)
+      required:
+        - seriesAndNumberDms
+        - startDate
+        - endDate
+        - InsuredPersonDetails
+    PartyIdentifiers:
+      type: object
+      description: Идентифицирующие реквизиты сторон, составивших  документ
+      required:
+        - сustomerINN
+        - сontractorINN
+      properties:
+        сustomerINN:
+          description: ИННЮЛ Заказчика
+          type: string
+          minItems: 1
+          maxItems: 10
+          pattern: ^[\w\W]{10}$
+          example: '7728241111'
+        сontractorINN:
+          description: ИННЮЛ Исполнителя
+          type: string
+          minItems: 1
+          maxItems: 10
+          pattern: ^[\w\W]{10}$
+          example: '7728240000'
+    DocumentDetails:
+      type: object
+      description: Реквизиты документа
+      required:
+        - documentNumber
+        - documentDate
+        - documentName
+      properties:
+        documentNumber:
+          type: string
+          description: Номер документа
+          minLength: 1
+          maxLength: 255
+          example: DMS-12234-10\2023-F
+        documentDate:
+          type: string
+          format: date
+          description: Дата документа
+          pattern: ^[\w\W]{10}$
+          maxLength: 10
+          example: '2023-10-12'
+        documentName:
+          type: string
+          description: Наименование документа
+          minLength: 1
+          maxLength: 255
+          example: Договор на предоставление медицинских услуг
+        comments:
+          type: string
+          description: Дополнительные сведения
+          minLength: 1
+          maxLength: 2000
+          example: Любая дополнительная информация к договору
+        IdentifyingDetails:
+          description: Идентифицирующие реквизиты сторон, составивших документ
+          type: array
+          items:
+            $ref: '#/components/schemas/PartyIdentifiers'
+    TextInformation:
+      type: object
+      description: Текстовая информация
+      properties:
+        identifier:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Info1
+          pattern: ^[a-zA-Z0-9_-]+$
+          description: Идентификатор комментария
+        value:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: This is some text information
+          pattern: ^[\w\W]{1,2000}$
+          description: Комментарии отправителя документа к документу (любой текст)
+      required:
+        - identifier
+        - value
+    InformationFieldInfo:
+      type: object
+      description: Информационное поле
+      properties:
+        textInformation:
+          type: array
+          items:
+            $ref: '#/components/schemas/TextInformation'
+          description: Текстовая информация
+    InsuredPerson:
+      type: object
+      description: Содержание списка застрахованных лиц по договорам добровольного медицинского страхования
+      properties:
+        insuredPersonId:
+          type: string
+          description: Уникальный идентификатор списка застрахованных лиц
+          example: ax-111-111111110
+        documentName:
+          type: string
+          minLength: 0
+          maxLength: 78
+          pattern: ^[\w\W]{1,78}$
+          description: Наименование документа
+          example: Список застрахованных лиц по договорам добровольного медицинского страхования
+        documentNumber:
+          description: Номер документа. При отсутствии номера принимает значение (без номера (б/н). Регистрационный номер в системе делопроизводства
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: '12345'
+        dateOfDocument:
+          description: Дата документа
+          type: string
+          format: date
+          example: '2021-06-05'
+        actionWithInsuredPerson:
+          description: Действие с застрахованными лицами. Обязательное поле.
+          example: Attachment
+          enum:
+            - Attachment
+            - Detachment
+            - Changment
+          x-enum-descriptions:
+            - Прикрепление
+            - Открепление
+            - Изменение
+          x-enum-varnames:
+            - Attachment
+            - Detachment
+            - Changment
+        earlyTerminationDate:
+          type: string
+          description: |
+            Дата последнего дня обслуживания/аннулирования принятия на обслуживание. Уазывается только при значкнии actionWithInsuredPerson «открепление»
+            МО при обработке списков рассматривает данную дату как последний день обслуживания.
+          example: '2023-06-15'
+          format: date
+        ContractorInformation:
+          type: array
+          description: Сведения об участнике факта хозяйственной жизни исполнителя
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/Contractor'
+        CustomerInformation:
+          description: Сведения об участнике факта хозяйственной жизни заказчика
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/Customer'
+        BranchInformation:
+          description: Сведения об участнике факта хозяйственной жизни филиала/подразделения
+          maxItems: 1000
+          type: array
+          items:
+            $ref: '#/components/schemas/Branch'
+        InsuredPersonInformation:
+          description: Тип сведений застрахованного лица
+          maxItems: 1000
+          type: array
+          items:
+            $ref: '#/components/schemas/InsuredPersonContent'
+        ContractDocumentInfo:
+          type: object
+          description: Сведения о договорном документе
+          allOf:
+            - $ref: '#/components/schemas/DocumentDetails'
+        AnnexToTheContract:
+          description: Приложение к договорному документу
+          allOf:
+            - $ref: '#/components/schemas/DocumentDetails'
+        InformationField:
+          description: Информационное поле
+          allOf:
+            - $ref: '#/components/schemas/InformationFieldInfo'
+      required:
+        - documentName
+        - documentNumber
+        - dateOfDocument
+        - actionWithInsuredPerson
+        - ContractorInformation
+        - CustomerInformation
+        - InsuredPersonInformation
+    Links:
+      description: Поставщик услуг предоставляет постраничный ответ для операций GET, которые возвращают множественные записи.
+      type: object
+      additionalProperties: false
+      properties:
+        self:
+          description: Текущая ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/v1.3/example?page=1
+        first:
+          description: Первая ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/v1.3/example?page=1
+        prev:
+          description: Предыдущая ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/v1.3/example?page=1
+        next:
+          description: Следующая ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/v1.3/example?page=1
+        last:
+          description: Последняя ссылка
+          type: string
+          format: uri
+          example: https://sb.example.ru/v1.3/example?page=1
+      required:
+        - self
+    Meta:
+      description: Дополнительные данные о запросе. «totalPages», указывает на количество передаваемых страниц. Если передается более одной страницы, то элемент «totalPages» обязательно присутствует.
+      type: object
+      additionalProperties: false
+      properties:
+        totalPages:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 5000
+          description: Указывает на количество передаваемых страниц
+          example: 1
+    InsuredPersonResponse:
+      type: object
+      required:
+        - Data
+      description: Информация о застрахованных лицах по договорам добровольного медицинского страхования
+      properties:
+        Data:
+          type: object
+          description: Раздел данных
+          properties:
+            InsuredPerson:
+              description: Содержание списка застрахованных лиц по договорам добровольного медицинского страхования
+              type: array
+              maxItems: 1000
+              items:
+                $ref: '#/components/schemas/InsuredPerson'
+          required:
+            - InsuredPerson
+        Links:
+          description: Раздел для указания ссылок
+          allOf:
+            - $ref: '#/components/schemas/Links'
+          example:
+            self: https://sb.example.ru/v1.0/example?page=1
+        Meta:
+          description: Раздел метаданных
+          allOf:
+            - $ref: '#/components/schemas/Meta'
+      x-example:
+        Data:
+          InsuredList:
+            - InsuredPerson:
+                - insuredPersonId: ax-111-111111110
+                  documentName: Список застрахованных лиц по договорам добровольного медицинского страхования
+                  documentNumber: '12345'
+                  dateOfDocument: '2021-06-05'
+                  actionWithInsuredPerson: Attachment
+                  ContractorInformation:
+                    - LegalEntity:
+                        organizationId: b1c4efe2-6992-4794-a256-4094a259ec07
+                        organizationName: Общество с ограниченной ответственностью «Сеть медицинских клиник»
+                        organizationInn: '7728240000'
+                        organizationKpp: '770201001'
+                  CustomerInformation:
+                    - LegalEntity:
+                        organizationId: 5860881e-7df3-4cba-86e7-7f2d857e108f
+                        organizationName: Страховое акционерное общество «Страховая организация»
+                        organizationInn: '7728241111'
+                        organizationKpp: '770201001'
+                  BranchInformation:
+                    - LegalEntity:
+                        organizationId: f46f22be-76e9-48da-9866-7072dfd701ac
+                        organizationName: Общество с ограниченной ответственностью «Клиника на Тверской»
+                        organizationInn: '7728240000'
+                        organizationKpp: '770201001'
+                      AddressBranch:
+                        postalCode: '125047'
+                        regionCode: '77'
+                        regionName: Г. Москва
+                        district: Тверской
+                        city: Москва
+                        locality: город Москва
+                        street: 1-я Тверска́я-Ямска́я
+                        house: '10'
+                        building: '1'
+                        apartment: '1'
+                        otherDetails: Помещение №1
+                  InsuredPersonInformation:
+                    - seriesAndNumberDms: DMS-22222-3-23
+                      startDate: '2023-01-01'
+                      endDate: '2023-12-31'
+                      InsuredProgramms:
+                        - programName: Стандарт
+                          programCode: StandartAdult
+                          paymentType: '0'
+                          earlyTerminationDate: 15.06.2023
+                          agreedTreatmentLimit: '5000.00'
+                          СurrencyInfo:
+                            Сurrency: RUB
+                            currencyName: Рубль
+                          InsuranceRisks:
+                            - riskCode: ^w$
+                              riscShortName:
+                                - Амбулаторно-поликлиническая помощь
+                              riscDescriptions: ^w$
+                      InsuredPersonDetails:
+                        birthDate: '1980-01-01'
+                        snils: 123-456-789-01
+                        gender: '1'
+                        Address:
+                          postalCode: '125047'
+                          regionCode: '77'
+                          regionName: Г. Москва
+                          district: Тверской
+                          city: Москва
+                          locality: город Москва
+                          street: 1-я Тверска́я-Ямска́я
+                          house: '10'
+                          building: '1'
+                          apartment: '1'
+                          otherDetails: Помещение №1
+                        addressString: Москва, ул. Тверская, д. 1, кв. 1, код домофона (#2234)
+                        IdentityDocumentInfo:
+                          documentType: '21'
+                          seriesAndNumber: 1234-567890
+                          issueDate: '2010-01-01'
+                          issuingAuthority: МВД России
+                          departmentCode: '1234567'
+                        identityDocumentInfoString: Паспорт РФ 1111 111111 выдан ОВД г. Москвы 01.12.2010
+                        omsPolicyNumber: '1111111111111110'
+                        position: Менеджер
+                        category: ВИП
+                        employerInfo: ООО "организация Тест"
+                        employerType: Член семьи
+                        FioContact:
+                          familyName: Иванов
+                          name: Иван
+                          patronymic: Иванович
+                        ContactInfo:
+                          phoneNumberFax: +1 (123) 456-7890
+                          emailAddress: example@example.com
+                      additionalInfo: По программе стоматология только экстренные обращения (с зубной болью)
+                  ContractDocumentInfo:
+                    documentNumber: DMS-12234-10\2023-F
+                    documentDate: '2023-10-12'
+                    documentName: Договор на предоставление медицинских услуг
+                    comments: Любая дополнительная информация к договору
+                    IdentifyingDetails:
+                      - customerINN: '7728241111'
+                        contractorINN: '7728240000'
+                  AnnexToTheContract:
+                    documentNumber: DMS-12234-10\2023-F
+                    documentDate: '2023-10-12'
+                    documentName: Договор на предоставление медицинских услуг
+                    comments: Любая дополнительная информация к договору
+                    IdentifyingDetails:
+                      - customerINN: '7728241111'
+                        contractorINN: '7728240000'
+                  InformationField:
+                    textInformation:
+                      - identifier: Info1
+                        value: This is some text information
+        Links:
+          self: https://sb.example.ru/v1.0/example?page=1
+        Meta:
+          totalPages: 1
+      additionalProperties: false
+    OBRUErrorResponseErrorCode:
+      description: Низкоуровневое описание ошибки. Поставщик услуг должен заполнить сообщение детальным описанием ошибки, не раскрывая конфиденциальную информацию.
+      type: string
+      example: RU.CBR.Field.Missing
+      enum:
+        - RU.CBR.Field.Expected
+        - RU.CBR.Field.Invalid
+        - RU.CBR.Field.InvalidDate
+        - RU.CBR.Field.Missing
+        - RU.CBR.Header.Invalid
+        - RU.CBR.Header.Missing
+        - RU.CBR.Resource.InvalidFormat
+        - RU.CBR.Resource.NotFound
+        - RU.CBR.Resource.NotCreated
+        - RU.CBR.Rules.AfterCutOffDateTime
+        - RU.CBR.Signature.Invalid
+        - RU.CBR.Signature.InvalidClaim
+        - RU.CBR.Signature.MissingClaim
+        - RU.CBR.Signature.Malformed
+        - RU.CBR.Signature.Missing
+        - RU.CBR.Unsupported.AccountIdentifier
+        - RU.CBR.Unsupported.LocalInstrument
+        - RU.CBR.Operation.Unprocessable
+        - RU.CBR.Authenticate.InvalidScope
+        - RU.CBR.Authenticate.InvalidConsent
+        - RU.CBR.Authenticate.SuspiciousActivityDetected
+        - RU.CBR.Rules.ResourceAlreadyExists
+        - RU.CBR.UnexpectedError
+      x-enum-descriptions:
+        - 'RU.CBR.Field.Expected: (HTTP статус 400). Если поля передаются парой (ключ-значение) и значение не было передано. В поле path должен передаваться путь к ожидаемому полю (например, ErrorResponse.Errors.path == “AccountResponse.Data.Account.AccountDetails.identification”).Например, для допустимого значения поля «schemeName» должно передаваться соответствующее значение идентификатора в поле «identification».'
+        - 'RU.CBR.Field.Invalid: (HTTP статус 400).В поле указано недопустимое значение или длина предоставленного значения превышает соответствующую максимальную длину поля в домене ППИУ. Ссылка на недопустимое поле должна быть указана в поле path (например,ErrorResponse.Errors.path == “AccountResponse.Data.Account.AccountDetails.schemeName”). В поле URL может быть ссылка на веб-страницу, объясняющую правильное поведение. Проблема должна быть подробно описана в сообщении об ошибке (поле ErrorResponse.Errors.message).'
+        - 'RU.CBR.Field.InvalidDate: (HTTP статус 400).Указана неверная дата. Например, когда ожидается будущая дата, а указана дата в прошлом или текущая дата. В сообщении можно указать актуальную проблему с датой. Ссылка на недопустимое поле должна быть указана в поле path, а в поле URL может быть ссылка на веб-страницу, объясняющую правильное поведение.'
+        - 'RU.CBR.Field.Missing: (HTTP статус 400).Обязательное поле, необходимое для API, отсутствует в полезной нагрузке. Данный код ошибки можно использовать, если ошибка еще не определена при проверке RU.CBR.Resource.InvalidFormat. Ссылка на отсутствующее поле должна быть указана в поле path, а в поле URL может быть ссылка на веб-страницу, объясняющую правильное поведение.'
+        - 'RU.CBR.Header.Invalid: (HTTP статус 400).В элементе заголовка HTTP указано неверное значение. Элемент заголовка HTTP должен быть указан в элементе пути.'
+        - 'RU.CBR.Header.Missing: (HTTP статус 400).Обязательный элемент HTTP-заголовка не был предоставлен. Элемент заголовка HTTP должен быть указан в элементе path. Элемент пути кода ошибки должен быть заполнен элементом ресурса согласия, который является недопустимым.'
+        - 'RU.CBR.Resource.InvalidFormat: (HTTP статус 400).Json-схема полезной нагрузки не соответствует конечной точке. Например, конечная точка POST /account-consents вызывается с полезной нагрузкой JSON, которая не может быть проанализирована в классе ConsentRequest.'
+        - 'RU.CBR.Resource.NotFound: (HTTP статус 400).Ресурс с указанным идентификатором не существует или не может быть обработан (в том числе неприемлимый формат или значение идентификатора ресурса).'
+        - 'RU.CBR.Resource.NotCreated: (HTTP статус 400).Ресурс с указанным идентификатором еще не создан и не может быть передан в ответном сообщении. Для асинхронных вызовов. Например, получение выписки по счету, где сначала создается ресурс выписки (метод POST /statements/{accountId}) и в ответном сообщение приходит идентификатор созданного ресурса выписки, но для наполнения выписки данными ППИУ требуется некоторое время. Соответственно, будет приходить данное сообщение об ошибке.'
+        - 'RU.CBR.Rules.AfterCutOffDateTime: (HTTP статус 400).Ресурс согласия или ресурс платежа запрашиваются после даты CutOffDateTime.'
+        - 'RU.CBR.Signature.Invalid: (HTTP статус 400).Заголовок подписи x-jws-signature был проанализирован и имеет действительный заголовок JOSE, соответствующий спецификации. Но сама подпись не может быть проверена.'
+        - 'RU.CBR.Signature.InvalidClaim: (HTTP статус 400).Заголовок JOSE в элементе x-jws-signature имеет одно или несколько утверждений (claim) с недопустимым значением. (например, утверждение kid, которое не принимает сертификат). Наименование отсутствующего утверждения должно передаваться в поле path ответа об ошибке.'
+        - 'RU.CBR.Signature.MissingClaim: (HTTP статус 400).Заголовок JOSE в элементе x-jws-signature имеет одно или несколько обязательных утверждений, которые не указаны. Имя пропущенного утверждения должно быть указано в поле path ответа об ошибке.'
+        - 'RU.CBR.Signature.Malformed: (HTTP статус 400).x-jws-signature в заголовке запроса была искажена и не могла быть проанализирована как допустимый JWS.'
+        - 'RU.CBR.Signature.Missing: (HTTP статус 400).Запрос API предполагает x-jws-signature в заголовке, но элемент отсутствовал.'
+        - 'RU.CBR.Unsupported.AccountIdentifier: (HTTP статус 400).Идентификатор счета не поддерживается для данной схемы. Элемент path должен быть заполнен путем к элементу accountIdentifier.'
+        - 'RU.CBR.Unsupported.LocalInstrument: (HTTP статус 400).Указанный localInstrument не поддерживается ППИУ. Элемент path должен быть заполнен путем к элементу localInstrument. Элемент URL должен быть заполнен ссылкой на документацию ППИУ со списком поддерживаемых localInstrument.'
+        - 'RU.CBR.Operation.Unprocessable: (HTTP статус 400).Операция по извлечению ресурса не может быть выполнена или недопустима.'
+        - 'RU.CBR.Authenticate.InvalidScope: (HTTP статус 403).Предъявленный токен доступа не содержит область действия ("scope") необходимый для доступа к ресурсу.'
+        - 'RU.CBR.Authenticate.InvalidConsent: (HTTP статус 403).Отказано доступу к ресурсу с указанным идентификатором, так как согласие Пользователя, отсутствует, либо имеет не корректный статус, либо не содержит необходимых разрешений ("pernissions") на данный ресурс.'
+        - 'RU.CBR.Authenticate.SuspiciousActivityDetected: (HTTP статус 403).Доступ к ресурсу приостановлен по причине выявления подозрения на мошеннические действия.'
+        - 'RU.CBR.Rules.ResourceAlreadyExists: (HTTP статус 409).Ресурс с такими же параметрами уже существует.'
+        - 'RU.CBR.UnexpectedError: (HTTP статус 5xx).Данный код ошибки можно использовать при возникновении непредвиденной ошибки. ППИУ должен заполнить сообщение детальным описанием ошибки, не раскрывая конфиденциальную информацию.'
+      x-enum-varnames:
+        - FieldExpected
+        - FieldInvalid
+        - FieldInvalidDate
+        - FieldMissing
+        - HeaderInvalid
+        - HeaderMissing
+        - ResourceInvalidFormat
+        - ResourceNotFound
+        - ResourceNotCreated
+        - RulesAfterCutOffDateTime
+        - SignatureInvalid
+        - SignatureInvalidClaim
+        - SignatureMissingClaim
+        - SignatureMalformed
+        - SignatureMissing
+        - UnsupportedAccountIdentifier
+        - UnsupportedLocalInstrument
+        - OperationUnprocessable
+        - AuthenticateInvalidScope
+        - AuthenticateInvalidConsent
+        - AuthenticateSuspiciousActivityDetected
+        - RulesResourceAlreadyExists
+        - UnexpectedError
+    OBRUError:
+      description: Контейнер с ошибкой
+      type: object
+      additionalProperties: false
+      properties:
+        errorCode:
+          $ref: '#/components/schemas/OBRUErrorResponseErrorCode'
+        message:
+          type: string
+          pattern: ^[\w\W]{1,500}$
+          minLength: 1
+          maxLength: 500
+          description: Описание ошибки
+          example: Обязательное поле не указано
+        path:
+          type: string
+          pattern: ^[\w\W]{1,500}$
+          minLength: 1
+          maxLength: 500
+          description: Путь к элементу с ошибкой в JSON объекте. Рекомендуемое, но не обязательное поле
+          example: Data.Model.Object.name
+        url:
+          type: string
+          format: uri
+          description: URL для помощи в устранении проблемы, Также через URL можно предоставлять дополнительную информацию
+          example: https://example.com/error-description
+      required:
+        - errorCode
+        - message
+    OBRUErrorResponse:
+      description: Контейнер с детализацией ошибки
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          pattern: ^[a-zA-Z0-9-]{1,40}$
+          minLength: 1
+          maxLength: 40
+          description: Высокоуровневый текстовый код ошибки, необходимый для классификации
+          example: '400'
+        id:
+          type: string
+          pattern: ^[a-zA-Z0-9-]{1,40}$
+          minLength: 1
+          maxLength: 40
+          description: Уникальный идентификатор ошибки, для целей аудита, в случае неизвестных / не классифицированных ошибок
+          example: 4aca5b0d-1730-416f-a52b-6d353b687082
+        message:
+          type: string
+          pattern: ^[\w\W]{1,500}$
+          minLength: 1
+          maxLength: 500
+          description: Краткое сообщение об ошибке. Например, «что-то не так с предоставленными параметрами запроса»
+          example: Bad Request
+        Errors:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/OBRUError'
+          minItems: 1
+      required:
+        - code
+        - message
+        - Errors
+    InsuredPersonListProcessingIssue:
+      type: object
+      required:
+        - errorCode
+        - message
+      properties:
+        errorCode:
+          type: string
+          description: Код ошибки
+          pattern: ^[A-Z0-9_]{1,50}$
+          example: CONTRACT_NOT_FOUND
+        message:
+          type: string
+          description: Описание ошибки
+          pattern: ^[\w\W]{1,500}$
+          example: Договор DMS-12234-10\2023-F не найден
+        documentNumber:
+          description: Номер документа, если ошибка связана с ним. При отсутствии номера принимает значение (без номера (б/н). Регистрационный номер в системе делопроизводства
+          type: string
+          pattern: ^[\w\W]{1,255}$
+          minLength: 1
+          maxLength: 255
+          example: DMS-12234-10\2023-F
+    InsuredPersonProcessingIssue:
+      type: object
+      required:
+        - seriesAndNumberDms
+        - errorCode
+        - message
+      properties:
+        seriesAndNumberDms:
+          type: string
+          description: Серия и номер ДМС-полиса застрахованного лица
+          example: DMS-0001-01-2025
+        errorCode:
+          type: string
+          description: Код ошибки обработки записи
+          example: INVALID_SNILS
+        message:
+          type: string
+          description: Описание ошибки
+          example: Некорректный формат СНИЛС
+    InsuredPersonListProcessingStatus:
+      type: object
+      required:
+        - insuredPersonId
+        - status
+        - processedAt
+        - InsuredPersonSummary
+      properties:
+        insuredPersonId:
+          type: string
+          format: uuid
+          description: Идентификатор списка застрахованных лиц
+        status:
+          type: string
+          enum:
+            - processed
+            - pending
+            - rejected
+          description: Текущий статус обработки
+        processedAt:
+          type: string
+          format: date-time
+        TopLevelIssues:
+          type: array
+          description: Ошибки верхнего уровня (по договору или блоку данных),  при наличии
+          items:
+            $ref: '#/components/schemas/InsuredPersonListProcessingIssue'
+        InsuredPersonSummary:
+          type: object
+          description: Сводные результаты по результатом обработки данных записей застрахованного лица
+          required:
+            - totalRecords
+            - acceptedRecords
+            - rejectedRecords
+          properties:
+            totalRecords:
+              type: integer
+              example: 100
+            acceptedRecords:
+              type: integer
+              example: 98
+            rejectedRecords:
+              type: integer
+              example: 2
+        InsuredPersonIssue:
+          type: array
+          description: Ошибки по каждому застрахованному лицу, при наличии
+          items:
+            $ref: '#/components/schemas/InsuredPersonProcessingIssue'
+  responses:
+    200InsuredPerson:
+      description: Запрос успешно выполнен
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+          schema:
+            type: string
+            format: uuid
+            description: Универсальный уникальный идентификатор (UUID) версии 4, в соответствии с IETC RFC 4122 "Universally Unique IDentifier (UUID) URN Namespace".
+          example: 97ed4827-7b6f-4491-a06f-b548d5a7512d
+        x-jws-signature:
+          required: false
+          description: Отделяемая подпись полезной нагрузки в формате JWS
+          schema:
+            type: string
+        x-knd-code:
+          description: Код документа по КНД (классификатору налоговой декларации)
+          schema:
+            type: string
+            pattern: ^[\w\W]{1,7}$
+            minLength: 1
+            maxLength: 7
+            example: '1110387'
+        x-date-time:
+          description: Дата и время формирования файла обмена информации исполнителя
+          schema:
+            type: string
+            format: date-time
+            example: '2021-06-05T15:15:13+00:00'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InsuredPersonResponse'
+    400Error:
+      description: Запрос имеет неверное, отсутствующее или несовместимое тело JSON, параметры URL или поля заголовка
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OBRUErrorResponse'
+          examples:
+            obru:
+              value:
+                code: '400'
+                id: 5aca5b0d-1730-416f-a52b-6d353b687082
+                message: Bad Request
+                Errors:
+                  - errorCode: RU.CBR.Field.Missing
+                    message: Обязательное поле, необходимое для API, отсутствует в полезной нагрузке
+                    path: Data.Model.Object.filled
+                    url: https://example.com/error-description
+    401Error:
+      description: Заголовок авторизации отсутствует или неверный токен
+      headers:
+        x-fapi-interaction-id:
+          required: true
+          schema:
+            type: string
+            format: uuid
+        www-authenticate:
+          required: true
+          schema:
+            type: string
+            enum:
+              - Valid token required
+    403Error:
+      description: Токен имеет неверную область действия или была нарушена политика безопасности
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OBRUErrorResponse'
+          example:
+            code: '403'
+            id: ab41a751-619b-4947-bf0a-251f6e92f599
+            message: Forbidden
+            Errors:
+              - errorCode: RU.CBR.Authenticate.InvalidScope
+                message: Предъявленный токен доступа не содержит область действия (scope) необходимый для доступа к ресурсу
+                url: https://example.com/error-description
+    404Error:
+      description: Сторонний Поставщик пытается получить ресурс, который указан в спецификации, но не реализован на стороне ППИУ, либо ресурс, который не определен
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+    406Error:
+      description: Запрос содержал параметр заголовка Accept, отличный от разрешенных media types, и набор символов, отличный от UTF-8
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+    429Error:
+      description: Операция была отклонена, так как слишком много запросов было сделано в течение определенного периода времени
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+        Retry-After:
+          schema:
+            type: string
+    500Error:
+      description: Что-то пошло не так на стороне Стороннего поставщика.
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OBRUErrorResponse'
+          example:
+            code: '500'
+            id: af467d1b-985d-4a8e-972e-24a32287085f
+            message: Internal Server Error
+            Errors:
+              - errorCode: RU.CBR.UnexpectedError
+                message: Что-то пошло не так на стороне Поставщика услуг
+                path: Data.Model.Object.filled
+                url: https://example.com/error-description
+    200Head:
+      description: Запрос успешно выполнен
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            title: No response
+            type: object
+            properties: {}
+    304NotModified:
+      description: Ресурс не изменен. Указывает, что нет необходимости повторно передавать запрошенные ресурсы. Это происходит, когда запрос является условным и использует If-None-Match или If-Modified-Since.
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.
+    405Error:
+      description: Сторонний Поставщик пытается получить доступ к ресурсу с помощью метода, который не поддерживается
+      headers:
+        x-fapi-interaction-id:
+          schema:
+            type: string
+            format: uuid
+          description: RFC4122 UID, используемый в качестве идентификатора корреляции. Если необходимо, то Сторонний поставщик передает обратно значение идентификатора корреляции в заголовке ответа x-fapi-interaction-id.

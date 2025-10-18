@@ -1,0 +1,6 @@
+<section id="intro">
+  <h2>Введение</h2>
+  {% if intro.summary %}<div class="md">{{ intro.summary | markdownWithoutHeading }}</div>{% endif %}
+  {% if intro.purpose %}<p><strong>Цель:</strong> {{ intro.purpose | markdownInline }}</p>{% endif %}
+  {% if intro.audience %}<p><strong>Аудитория:</strong> {{ intro.audience | join(', ') }}</p>{% endif %}
+</section>
