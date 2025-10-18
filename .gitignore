@@ -1,0 +1,17 @@
+# macOS finder cruft
+.DS_Store
+.vs_code
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Temporary and debug artifacts
+tmp/
+debug-docx*.xml
+debug-docx*.html
+temp.txt
+*.docx
+
