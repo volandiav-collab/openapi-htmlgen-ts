@@ -445,13 +445,6 @@ function applyTableStyling(docxPath: string, templatePath: string | null) {
     }
     fs.writeFileSync(docXmlPath, docXml, 'utf-8');
 
-    try {
-      // Корректируем размеры заголовков в styles.xml.
-      applyHeadingStyleDefinitions(extractDir);
-    } catch (err) {
-      console.warn('[docx] failed to adjust heading styles:', err);
-    }
-
     fs.unlinkSync(docxPath);
     // Запаковываем обновлённое содержимое обратно в DOCX.
     const zip = spawnSync('zip', ['-qry', docxPath, '.'], { cwd: extractDir });
@@ -482,11 +475,6 @@ function applyHeaderFormatting(tableXml: string): string {
   });
 }
 
-// Удаляет автоматически сгенерированный заголовок Word, если он присутствует.
-function removeGeneratedTitle(docXml: string): string {
-  return docXml.replace(/<w:p[^>]*>\s*<w:pPr>[\s\S]*?<w:pStyle[^>]*\bw:val="Title"[^>]*\/>[\s\S]*?<\/w:pPr>[\s\S]*?<\/w:p>\s*/, '');
-}
-
 function insertPageBreak(docXml: string): string {
   const marker = '__PAGE_BREAK__';
   const markerIndex = docXml.indexOf(marker);
@@ -501,39 +489,6 @@ function insertPageBreak(docXml: string): string {
   const breakRun = '<w:r><w:br w:type="page"/></w:r>';
   const updated = `${docXml.slice(0, runStart)}${breakRun}${docXml.slice(runEnd + '</w:r>'.length)}`;
   return updated.replace(marker, '');
-}
-
-// Обновляет styles.xml, чтобы задать размеры шрифта для заголовков.
-function applyHeadingStyleDefinitions(extractDir: string): void {
-  const stylesPath = path.join(extractDir, 'word', 'styles.xml');
-  if (!fs.existsSync(stylesPath)) {
-    return;
-  }
-  let stylesXml = fs.readFileSync(stylesPath, 'utf-8');
-  stylesXml = applyStyleSize(stylesXml, '1', 40);
-  stylesXml = applyStyleSize(stylesXml, 'Heading1', 40);
-  stylesXml = applyStyleSize(stylesXml, '2', 32);
-  stylesXml = applyStyleSize(stylesXml, 'Heading2', 32);
-  fs.writeFileSync(stylesPath, stylesXml, 'utf-8');
-}
-
-// Гарантирует, что стиль с указанным id использует нужный размер шрифта.
-function applyStyleSize(stylesXml: string, styleId: string, sizeHalfPoints: number): string {
-  const stylePattern = new RegExp(`<w:style[^>]*w:styleId="${styleId}"[^>]*>[\\s\\S]*?<\\/w:style>`, 'g');
-  return stylesXml.replace(stylePattern, styleBlock => {
-    if (!/<w:rPr>/.test(styleBlock)) {
-      const insertionIndex = styleBlock.lastIndexOf('</w:style>');
-      if (insertionIndex === -1) return styleBlock;
-      const addition = `<w:rPr><w:sz w:val="${sizeHalfPoints}"/><w:szCs w:val="${sizeHalfPoints}"/></w:rPr>`;
-      return `${styleBlock.slice(0, insertionIndex)}${addition}${styleBlock.slice(insertionIndex)}`;
-    }
-    return styleBlock.replace(/<w:rPr>([\s\S]*?)<\/w:rPr>/, (_match, inner) => {
-      const cleaned = (inner as string)
-        .replace(/<w:sz[^>]*\/>/g, '')
-        .replace(/<w:szCs[^>]*\/>/g, '');
-      return `<w:rPr>${cleaned}<w:sz w:val="${sizeHalfPoints}"/><w:szCs w:val="${sizeHalfPoints}"/></w:rPr>`;
-    });
-  });
 }
 
 // Удаляет чужие размеры шрифта внутри абзацев с заголовками.
@@ -604,8 +559,14 @@ function replaceTocPlaceholder(docXml: string): string {
 }
 
 // Настраивает внешний вид первой строки таблицы как заголовочной.
+// Заголовок таблицы может быть прокрашен иначе потому, что в постобработке DOCX мы 
+// специально переопределяем границы первой строки. При разборе готового документа applyHeaderFormatting вызывает formatHeaderRow,
+//  и в нём для каждой ячейки заголовка выставляется блок <w:tcBorders>… w:color="DDDDDD"…</w:tcBorders> (src/docx.ts:601). 
+// Остальные строки получают рамки из inlineTableStylesForDocx, где цвет задан как #344054, 
+// поэтому визуально они отличаются. 
+// Если нужен единый цвет, уберите или поменяйте эту вставку в formatHeaderRow.
 function formatHeaderRow(rowXml: string): string {
-  const headerBorders = '<w:tcBorders><w:top w:val="single" w:sz="8" w:space="0" w:color="DDDDDD"/><w:left w:val="single" w:sz="8" w:space="0" w:color="DDDDDD"/><w:bottom w:val="single" w:sz="8" w:space="0" w:color="DDDDDD"/><w:right w:val="single" w:sz="8" w:space="0" w:color="DDDDDD"/></w:tcBorders>';
+  const headerBorders = '<w:tcBorders><w:top w:val="single" w:sz="8" w:space="0" w:color="344054"/><w:left w:val="single" w:sz="8" w:space="0" w:color="344054"/><w:bottom w:val="single" w:sz="8" w:space="0" w:color="344054"/><w:right w:val="single" w:sz="8" w:space="0" w:color="344054"/></w:tcBorders>';
   const headerShading = '<w:shd w:val="clear" w:color="auto" w:fill="F0F0F0"/>';
   const headerMargins = '<w:tcMar><w:top w:w="30" w:type="dxa"/><w:left w:w="30" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/><w:right w:w="30" w:type="dxa"/></w:tcMar>';
   return rowXml.replace(/<w:tc\b[^>]*>([\s\S]*?)<\/w:tc>/g, (cellMatch, inner) => {
@@ -644,7 +605,6 @@ function applyTemplateFiles(extractDir: string, templatePath: string) {
     }
     const filesToCopy = [
       'word/styles.xml',
-      'word/numbering.xml',
       'word/theme/theme1.xml',
       'word/settings.xml'
     ];
@@ -661,7 +621,78 @@ function applyTemplateFiles(extractDir: string, templatePath: string) {
         console.warn(`[docx] failed to copy template file ${relativePath}:`, err);
       }
     }
+    const numberingSource = path.join(tempTemplateDir, 'word', 'numbering.xml');
+    if (fs.existsSync(numberingSource)) {
+      const numberingTarget = path.join(extractDir, 'word', 'numbering.xml');
+      try {
+        mergeNumberingFiles(numberingTarget, numberingSource);
+      } catch (err) {
+        console.warn('[docx] failed to merge numbering.xml from template:', err);
+      }
+    }
   } finally {
     fs.rmSync(tempTemplateDir, { recursive: true, force: true });
   }
+}
+
+// Сливает списковые стили из шаблона, не перезаписывая Pandoc-нумерацию.
+function mergeNumberingFiles(targetPath: string, templatePath: string) {
+  const templateXml = fs.readFileSync(templatePath, 'utf-8');
+  const targetExists = fs.existsSync(targetPath);
+  if (!targetExists) {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.copyFileSync(templatePath, targetPath);
+    return;
+  }
+
+  let targetXml = fs.readFileSync(targetPath, 'utf-8');
+  const closingTag = '</w:numbering>';
+  const closeIndex = targetXml.lastIndexOf(closingTag);
+  if (closeIndex === -1) {
+    fs.copyFileSync(templatePath, targetPath);
+    return;
+  }
+
+  const extractEntries = (xml: string, node: 'abstractNum' | 'num') => {
+    const regex = new RegExp(`<w:${node}[^>]*>[\\s\\S]*?<\\/w:${node}>`, 'gi');
+    const idAttr = node === 'abstractNum' ? 'w:abstractNumId' : 'w:numId';
+    const entries: Array<{ id: string; block: string }> = [];
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(xml)) !== null) {
+      const block = match[0];
+      const idMatch = block.match(new RegExp(`${idAttr}="(\\d+)"`, 'i'));
+      if (idMatch?.[1]) {
+        entries.push({ id: idMatch[1], block });
+      }
+    }
+    return entries;
+  };
+
+  const existingAbstractIds = new Set(
+    [...targetXml.matchAll(/w:abstractNumId="(\d+)"/gi)].map(match => match[1])
+  );
+  const existingNumIds = new Set(
+    [...targetXml.matchAll(/w:numId="(\d+)"/gi)].map(match => match[1])
+  );
+
+  const additions: string[] = [];
+  for (const entry of extractEntries(templateXml, 'abstractNum')) {
+    if (!existingAbstractIds.has(entry.id)) {
+      additions.push(entry.block);
+      existingAbstractIds.add(entry.id);
+    }
+  }
+  for (const entry of extractEntries(templateXml, 'num')) {
+    if (!existingNumIds.has(entry.id)) {
+      additions.push(entry.block);
+      existingNumIds.add(entry.id);
+    }
+  }
+
+  if (!additions.length) {
+    return;
+  }
+
+  targetXml = `${targetXml.slice(0, closeIndex)}\n${additions.join('\n')}\n${targetXml.slice(closeIndex)}`;
+  fs.writeFileSync(targetPath, targetXml, 'utf-8');
 }
