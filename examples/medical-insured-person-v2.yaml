@@ -252,6 +252,9 @@ paths:
         Конечная точка позволяет получить список застрахованных лиц по договорам добровольного медицинского страхования 
         <img alt="UML диаграмма" src="static/openapi-images/insured-person-v2.svg" />
       operationId: getInsuredPerson
+      x-externalDocs:
+        description: Примеры применения
+        url: static/openapi-docs/account-consents-pe.md      
       parameters:
         - $ref: '#/components/parameters/page'
         - $ref: '#/components/parameters/If-Modified-Since'

@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type {
   UnifiedDoc,
   UnifiedEndpointParameter,
@@ -11,11 +13,14 @@ import type {
   UnifiedMediaContent,
   UnifiedSchema,
   UnifiedSchemaFlatProperty,
-  UnifiedSchemaProperty
+  UnifiedSchemaProperty,
+  UnifiedExampleResponse,
+  UnifiedExampleUsageDoc
 } from './types.js';
 
 type MapOptions = {
   includeNested?: boolean;
+  sourcePath?: string | null;
 };
 function detectEnv(u: string): 'prod'|'test'|'dev'|null {
   const url = (u||'').toLowerCase();
@@ -26,6 +31,104 @@ function detectEnv(u: string): 'prod'|'test'|'dev'|null {
 }
 
 const HTTP_METHODS = new Set(['get','post','put','delete','patch','head','options']);
+
+function extractHost(url: unknown): string | null {
+  if (!url || typeof url !== 'string') return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.host) return parsed.host;
+  } catch {
+    /* fallthrough */
+  }
+  const match = url.match(/^[a-z][a-z0-9+.-]*:\/\/([^/]+)/i);
+  if (match && match[1]) return match[1];
+  return null;
+}
+
+function isAbsoluteUrl(url: string): boolean {
+  return /^[a-z][a-z0-9+.+-]*:\/\//i.test(url);
+}
+
+function isLikelyMarkdown(url: string): boolean {
+  const clean = url.trim().toLowerCase();
+  return clean.endsWith('.md') || clean.endsWith('.markdown');
+}
+
+function resolveDocContent(baseDir: string | null, url: string, cache: Map<string, string | null>): string | null {
+  if (!baseDir) return null;
+  if (cache.has(url)) {
+    return cache.get(url) ?? null;
+  }
+  const cleanUrl = url.split(/[?#]/)[0];
+  const candidatePath = path.resolve(baseDir, cleanUrl);
+  let content: string | null = null;
+  try {
+    const stat = fs.statSync(candidatePath);
+    if (stat.isFile()) {
+      content = fs.readFileSync(candidatePath, 'utf-8');
+    }
+  } catch {
+    content = null;
+  }
+  cache.set(url, content);
+  return content;
+}
+
+function collectUsageDocs(op: any, baseDir: string | null, cache: Map<string, string | null>): UnifiedExampleUsageDoc[] {
+  const result: UnifiedExampleUsageDoc[] = [];
+  const candidates: any[] = [];
+  if (op?.externalDocs) candidates.push(op.externalDocs);
+  if (op?.['x-externalDocs']) candidates.push(op['x-externalDocs']);
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      for (const doc of candidate) {
+        const normalized = normalizeUsageDoc(doc, baseDir, cache);
+        if (normalized) result.push(normalized);
+      }
+    } else {
+      const normalized = normalizeUsageDoc(candidate, baseDir, cache);
+      if (normalized) result.push(normalized);
+    }
+  }
+  return result;
+}
+
+function normalizeUsageDoc(doc: any, baseDir: string | null, cache: Map<string, string | null>): UnifiedExampleUsageDoc | null {
+  if (!doc || typeof doc !== 'object') return null;
+  const rawUrl = doc.url;
+  if (typeof rawUrl !== 'string' || !rawUrl.trim()) return null;
+  const url = rawUrl.trim();
+  const description = typeof doc.description === 'string' ? doc.description : null;
+  let markdown: string | null = null;
+  let text: string | null = null;
+  if (!isAbsoluteUrl(url)) {
+    const content = resolveDocContent(baseDir, url, cache);
+    if (content !== null) {
+      if (isLikelyMarkdown(url)) {
+        markdown = content;
+      } else {
+        text = content;
+      }
+    }
+  }
+  return {
+    description,
+    url,
+    markdown,
+    text
+  };
+}
+
+function isErrorStatus(status: string): boolean {
+  const normalized = String(status ?? '').trim().toUpperCase();
+  const numeric = Number(normalized);
+  if (!Number.isNaN(numeric)) {
+    return numeric >= 400;
+  }
+  if (/^[45]\d{2}$/.test(normalized)) return true;
+  if (/^[45]XX$/.test(normalized)) return true;
+  return false;
+}
 
 function refName(ref: string | undefined | null): string | null {
   if (!ref) return null;
@@ -585,9 +688,11 @@ function categorizeSchema(_name: string, schema: UnifiedSchema): 'object'|'enum'
 
 export function mapToUnified(spec: any, options: MapOptions = {}): UnifiedDoc {
   const info = spec?.info ?? {};
-  const servers = spec?.servers ?? [];
+  const rawServers: any[] = Array.isArray(spec?.servers) ? spec.servers : [];
   const tags = Array.isArray(spec?.tags) ? spec.tags : [];
   const includeNested = options?.includeNested === true;
+  const sourcePath = typeof options?.sourcePath === 'string' ? options.sourcePath : null;
+  const sourceDir = sourcePath ? path.dirname(path.resolve(sourcePath)) : null;
   const tagDescriptions = new Map<string, any>();
   for (const tag of tags) {
     if (tag?.name) {
@@ -598,7 +703,12 @@ export function mapToUnified(spec: any, options: MapOptions = {}): UnifiedDoc {
     meta: { title: info.title ?? 'API', version: info.version ?? '0.0.0', date: null, organization: null, docsCode: null },
     intro: { summary: info.description ?? null, purpose: null, audience: null, terms: null },
     api_overview: {
-      servers: (servers as any[]).map(s => ({ url: s.url, description: s.description, env: detectEnv(s.url) })),
+      servers: rawServers.map((s: any) => ({
+        url: s.url,
+        description: s.description,
+        env: detectEnv(s.url),
+        host: extractHost(s.url)
+      })),
       security: [],
       tags
     },
@@ -607,6 +717,8 @@ export function mapToUnified(spec: any, options: MapOptions = {}): UnifiedDoc {
     compliance: { standards: [], security_controls: [] },
     change_log: []
   };
+
+  const usageDocCache = new Map<string, string | null>();
 
   const requestOperationSchemas: UnifiedOperationSchema[] = [];
   const responseOperationSchemas: UnifiedOperationSchema[] = [];
@@ -666,16 +778,31 @@ export function mapToUnified(spec: any, options: MapOptions = {}): UnifiedDoc {
         ? { headers: requestHeaders, payloads: requestPayloads }
         : null;
 
-      const responseExamples = ep.responses.map((resp: UnifiedEndpointResponse) => ({
-        status: resp.status,
-        headers: resp.headers ?? [],
-        payloads: resp.payloads ?? []
-      }));
+      const successResponses: UnifiedExampleResponse[] = [];
+      const errorResponses: UnifiedExampleResponse[] = [];
+      for (const resp of ep.responses) {
+        const exampleResponse: UnifiedExampleResponse = {
+          status: resp.status,
+          headers: resp.headers ?? [],
+          payloads: resp.payloads ?? []
+        };
+        if (isErrorStatus(resp.status)) {
+          errorResponses.push(exampleResponse);
+        } else {
+          successResponses.push(exampleResponse);
+        }
+      }
 
       ep.examples = {
         request: requestExample,
-        responses: responseExamples
+        successResponses,
+        errorResponses
       } satisfies UnifiedEndpointExample;
+      ep.usageExamples = null;
+      const usageExamples = collectUsageDocs(op, sourceDir, usageDocCache);
+      if (usageExamples.length) {
+        ep.usageExamples = usageExamples;
+      }
 
       if (ep.requestBody?.contents) {
         for (const item of ep.requestBody.contents) {

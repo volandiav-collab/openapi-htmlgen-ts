@@ -166,104 +166,236 @@
     </div>
   {% endif %}
 
-{% macro renderHeaders(headers) %}
-  {% if headers and headers | length %}
-      {% set lines = [] -%}
-      {% for header in headers -%}
-        {% if header.example is not none and header.example is not undefined %}
-          {% set lines = lines.concat([header.name ~ ': ' ~ header.example]) %}
-        {% else %}
-          {% set lines = lines.concat([header.name ~ ': —']) %}
-        {% endif %}
-      {%- endfor %}
-      <pre><code>{{ lines | join('\n') }}</code></pre>
+{% macro renderHttpRequest(method, path, host, headers, contentType) %}
+  {% set lines = [method ~ ' ' ~ path ~ ' HTTP/1.1'] %}
+  {% if host %}
+    {% set lines = lines.concat(['Host: ' ~ host]) %}
+  {% endif %}
+  {% set hasContentType = false %}
+  {% for header in headers or [] %}
+    {% set headerName = header.name %}
+    {% set headerValue = '—' %}
+    {% if header.example is not none and header.example is not undefined %}
+      {% set headerValue = header.example %}
+    {% endif %}
+    {% set lines = lines.concat([headerName ~ ': ' ~ headerValue]) %}
+    {% if headerName | lower == 'content-type' %}
+      {% set hasContentType = true %}
+    {% endif %}
+  {% endfor %}
+  {% if not hasContentType and contentType %}
+    {% set lines = lines.concat(['Content-Type: ' ~ contentType]) %}
+  {% endif %}
+  <pre><code class="language-http">{{ lines | join('\n') }}</code></pre>
+{% endmacro %}
+
+{% macro renderHttpResponse(status, headers, contentType) %}
+  {% set lines = ['HTTP/1.1 ' ~ status] %}
+  {% set hasContentType = false %}
+  {% for header in headers or [] %}
+    {% set headerName = header.name %}
+    {% set headerValue = '—' %}
+    {% if header.example is not none and header.example is not undefined %}
+      {% set headerValue = header.example %}
+    {% endif %}
+    {% set lines = lines.concat([headerName ~ ': ' ~ headerValue]) %}
+    {% if headerName | lower == 'content-type' %}
+      {% set hasContentType = true %}
+    {% endif %}
+  {% endfor %}
+  {% if not hasContentType and contentType %}
+    {% set lines = lines.concat(['Content-Type: ' ~ contentType]) %}
+  {% endif %}
+  <pre><code class="language-http">{{ lines | join('\n') }}</code></pre>
+{% endmacro %}
+
+{% macro renderPayloadBlock(payload, emptyText='—') %}
+  {% if payload and payload.example is not none and payload.example is not undefined %}
+    {% if payload.example is string %}
+      <pre><code>{{ payload.example }}</code></pre>
+    {% else %}
+      <pre><code class="language-json">{{ payload.example | json(2) }}</code></pre>
+    {% endif %}
   {% else %}
-      <div class="example-empty">—</div>
+    <div class="example-empty">{{ emptyText }}</div>
   {% endif %}
 {% endmacro %}
 
-  {% macro renderPayload(payload) %}
-    {% if payload.example is not none and payload.example is not undefined %}
-      {% if payload.example is string %}
-        <pre><code>{{ payload.example }}</code></pre>
-      {% else %}
-        <pre><code class="language-json">{{ payload.example | json(2) }}</code></pre>
-      {% endif %}
-    {% else %}
-      <div class="example-empty">—</div>
-    {% endif %}
-  {% endmacro %}
-
   {% if resources and (resources | length) %}
+    {% set primaryServer = (api_overview.servers and api_overview.servers[0]) or none %}
+    {% set baseHost = (primaryServer and primaryServer.host) or none %}
+    {% set usageItems = [] %}
+    {% for resource in resources %}
+      {% for endpoint in resource.endpoints %}
+        {% if endpoint.usageExamples and (endpoint.usageExamples | length) %}
+          {% for usage in endpoint.usageExamples %}
+            {% set usageItems = usageItems.concat([{
+              'resource': resource,
+              'endpoint': endpoint,
+              'usage': usage
+            }]) %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    {% set errorStatusSeen = [] %}
+    {% set errorExamples = [] %}
+    {% for resource in resources %}
+      {% for endpoint in resource.endpoints %}
+        {% set example = endpoint.examples %}
+        {% if example and example.errorResponses and (example.errorResponses | length) %}
+          {% for response in example.errorResponses %}
+            {% set statusKey = response.status %}
+            {% if statusKey not in errorStatusSeen %}
+              {% set selectedErrorPayload = null %}
+              {% for payload in response.payloads %}
+                {% if not selectedErrorPayload and payload.example is not none and payload.example is not undefined %}
+                  {% set selectedErrorPayload = payload %}
+                {% endif %}
+              {% endfor %}
+              {% if not selectedErrorPayload and response.payloads and (response.payloads | length) %}
+                {% set selectedErrorPayload = response.payloads[0] %}
+              {% endif %}
+              {% set errorStatusSeen = errorStatusSeen.concat([statusKey]) %}
+              {% set errorExamples = errorExamples.concat([{
+                'resource': resource,
+                'endpoint': endpoint,
+                'response': response,
+                'payload': selectedErrorPayload
+              }]) %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
     <div class="schema-section schema-examples" id="schema-examples">
       <h3>Примеры</h3>
-      {% set primaryServer = (api_overview.servers and api_overview.servers[0]) or none %}
-      {% set baseUrl = (primaryServer and primaryServer.url) or '' %}
-      {% for resource in resources %}
-        <article class="example-resource">
-          <h4>{{ resource.tag }}</h4>
-          {% for endpoint in resource.endpoints %}
-            <div class="example-endpoint">
-              <div class="example-heading"><span class="method">{{ endpoint.method }}</span> <code>{{ endpoint.path }}</code></div>
-              {% if baseUrl %}
-                {% set command = "curl -X " ~ endpoint.method ~ " '" ~ baseUrl ~ endpoint.path ~ "'" %}
-              {% else %}
-                {% set command = "curl -X " ~ endpoint.method ~ " '" ~ endpoint.path ~ "'" %}
-              {% endif %}
-              <pre><code class="language-bash">{{ command }}</code></pre>
-              {% set example = endpoint.examples %}
-              {% if example and example.request %}
-                <div class="example-block">
-                  <h5>Запрос</h5>
-                  <div class="example-subblock">
-                    <div class="example-subheading">Заголовки</div>
-                    {{ renderHeaders(example.request.headers) }}
+      <div class="example-group" id="basic-examples">
+        <h4>Базовые примеры</h4>
+        {% for resource in resources %}
+          {% if resource.endpoints and (resource.endpoints | length) %}
+            <article class="example-resource">
+              <h5>{{ resource.tag }}</h5>
+              {% for endpoint in resource.endpoints %}
+                {% set example = endpoint.examples %}
+                <div class="example-endpoint">
+                  <div class="example-heading"><span class="method">{{ endpoint.method }}</span> <code>{{ endpoint.path }}</code></div>
+                  {% set requestExample = example.request %}
+                  {% set requestPayload = null %}
+                  {% if requestExample and requestExample.payloads and (requestExample.payloads | length) %}
+                    {% for payload in requestExample.payloads %}
+                      {% if not requestPayload and payload.example is not none and payload.example is not undefined %}
+                        {% set requestPayload = payload %}
+                      {% endif %}
+                    {% endfor %}
+                    {% if not requestPayload %}
+                      {% set requestPayload = requestExample.payloads[0] %}
+                    {% endif %}
+                  {% endif %}
+                  <div class="example-block">
+                    <h5>Запрос</h5>
+                    {{ renderHttpRequest(endpoint.method, endpoint.path, baseHost, requestExample and requestExample.headers or [], requestPayload and requestPayload.mediaType) }}
+                    {{ renderPayloadBlock(requestPayload, 'Полезная нагрузка отсутствует') }}
                   </div>
-                  {% if example.request.payloads and (example.request.payloads | length) %}
-                    {% for payload in example.request.payloads %}
-                      <div class="example-subblock">
-                        <div class="example-subheading">Полезная нагрузка{% if payload.mediaType %} ({{ payload.mediaType }}){% endif %}</div>
-                        {{ renderPayload(payload) }}
+                  {% if example.successResponses and (example.successResponses | length) %}
+                    {% for response in example.successResponses %}
+                      {% set responsePayload = null %}
+                      {% if response.payloads and (response.payloads | length) %}
+                        {% for payload in response.payloads %}
+                          {% if not responsePayload and payload.example is not none and payload.example is not undefined %}
+                            {% set responsePayload = payload %}
+                          {% endif %}
+                        {% endfor %}
+                        {% if not responsePayload %}
+                          {% set responsePayload = response.payloads[0] %}
+                        {% endif %}
+                      {% endif %}
+                      <div class="example-block">
+                        <h5>Ответ {{ response.status }}</h5>
+                        {{ renderHttpResponse(response.status, response.headers, responsePayload and responsePayload.mediaType) }}
+                        {{ renderPayloadBlock(responsePayload, 'Полезная нагрузка отсутствует') }}
                       </div>
                     {% endfor %}
                   {% else %}
-                    <div class="example-subblock">
-                      <div class="example-subheading">Полезная нагрузка</div>
-                      <div class="example-empty">—</div>
+                    <div class="example-block">
+                      <h5>Ответ</h5>
+                      <div class="example-empty">Подходящих ответов не найдено</div>
                     </div>
                   {% endif %}
                 </div>
-              {% endif %}
-              {% if example and example.responses and (example.responses | length) %}
-                {% for response in example.responses %}
-                  {% if response.status|int < 400 %}
-                    <div class="example-block">
-                      <h5>Ответ {{ response.status }}</h5>
-                      <div class="example-subblock">
-                        <div class="example-subheading">Заголовки</div>
-                        {{ renderHeaders(response.headers) }}
-                      </div>
-                      {% if response.payloads and (response.payloads | length) %}
-                        {% for payload in response.payloads %}
-                          <div class="example-subblock">
-                            <div class="example-subheading">Полезная нагрузка{% if payload.mediaType %} ({{ payload.mediaType }}){% endif %}</div>
-                            {{ renderPayload(payload) }}
-                          </div>
-                        {% endfor %}
-                      {% else %}
-                        <div class="example-subblock">
-                          <div class="example-subheading">Полезная нагрузка</div>
-                          <div class="example-empty">—</div>
-                        </div>
-                      {% endif %}
-                    </div>
-                  {% endif %}
-                {% endfor %}
-              {% endif %}
-            </div>
+              {% endfor %}
+            </article>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% if usageItems and (usageItems | length) %}
+        <div class="example-group" id="usage-examples">
+          <h4>Пример использования</h4>
+          {% for item in usageItems %}
+            <article class="example-resource">
+              <h5>{{ item.resource.tag }}</h5>
+              <div class="example-endpoint">
+                <div class="example-heading"><span class="method">{{ item.endpoint.method }}</span> <code>{{ item.endpoint.path }}</code></div>
+                {% if item.usage.description %}
+                  <div class="example-summary">{{ item.usage.description }}</div>
+                {% endif %}
+                {% if item.usage.markdown %}
+                  <div class="md">{{ item.usage.markdown | markdown }}</div>
+                  <div class="example-source"><a href="{{ item.usage.url }}">Источник: {{ item.usage.url }}</a></div>
+                {% elif item.usage.text %}
+                  <pre><code>{{ item.usage.text }}</code></pre>
+                  <div class="example-source"><a href="{{ item.usage.url }}">Источник: {{ item.usage.url }}</a></div>
+                {% else %}
+                  <div class="example-empty">
+                    Не удалось автоматически загрузить пример.
+                    <a href="{{ item.usage.url }}">Открыть источник</a>
+                  </div>
+                {% endif %}
+              </div>
+            </article>
           {% endfor %}
-        </article>
-      {% endfor %}
+        </div>
+      {% endif %}
+      {% if errorExamples and (errorExamples | length) %}
+        <div class="example-group" id="error-examples">
+          <h4>Примеры с ошибками возврата</h4>
+          {% for item in errorExamples %}
+            {% set example = item.endpoint.examples %}
+            <article class="example-resource">
+              <h5>{{ item.resource.tag }}</h5>
+              <div class="example-endpoint">
+                <div class="example-heading"><span class="method">{{ item.endpoint.method }}</span> <code>{{ item.endpoint.path }}</code></div>
+                {% set requestExample = example.request %}
+                {% set requestPayload = null %}
+                {% if requestExample and requestExample.payloads and (requestExample.payloads | length) %}
+                  {% for payload in requestExample.payloads %}
+                    {% if not requestPayload and payload.example is not none and payload.example is not undefined %}
+                      {% set requestPayload = payload %}
+                    {% endif %}
+                  {% endfor %}
+                  {% if not requestPayload %}
+                    {% set requestPayload = requestExample.payloads[0] %}
+                  {% endif %}
+                {% endif %}
+                <div class="example-block">
+                  <h5>Запрос</h5>
+                  {{ renderHttpRequest(item.endpoint.method, item.endpoint.path, baseHost, requestExample and requestExample.headers or [], requestPayload and requestPayload.mediaType) }}
+                  {{ renderPayloadBlock(requestPayload, 'Полезная нагрузка отсутствует') }}
+                </div>
+                {% set responsePayload = item.payload %}
+                {% if not responsePayload and item.response.payloads and (item.response.payloads | length) %}
+                  {% set responsePayload = item.response.payloads[0] %}
+                {% endif %}
+                <div class="example-block">
+                  <h5>Ответ {{ item.response.status }}</h5>
+                  {{ renderHttpResponse(item.response.status, item.response.headers, responsePayload and responsePayload.mediaType) }}
+                  {{ renderPayloadBlock(responsePayload, 'Полезная нагрузка отсутствует') }}
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
     </div>
   {% endif %}
 

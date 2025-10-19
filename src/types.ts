@@ -93,6 +93,7 @@ export type UnifiedEndpoint = {
   responses: UnifiedEndpointResponse[];
   security?: string[] | null;
   examples?: UnifiedEndpointExample | null;
+  usageExamples?: UnifiedExampleUsageDoc[] | null;
 };
 
 export type UnifiedResource = {
@@ -113,6 +114,19 @@ export type UnifiedExamplePayload = {
   example?: unknown;
 };
 
+export type UnifiedExampleUsageDoc = {
+  description?: string | null;
+  url: string;
+  markdown?: string | null;
+  text?: string | null;
+};
+
+export type UnifiedExampleResponse = {
+  status: string;
+  headers: UnifiedExampleHeader[];
+  payloads: UnifiedExamplePayload[];
+};
+
 export type UnifiedContentSchema = {
   mediaType: string;
   schemaDef: any;
@@ -124,18 +138,15 @@ export type UnifiedEndpointExample = {
     headers: UnifiedExampleHeader[];
     payloads: UnifiedExamplePayload[];
   } | null;
-  responses: Array<{
-    status: string;
-    headers: UnifiedExampleHeader[];
-    payloads: UnifiedExamplePayload[];
-  }>;
+  successResponses: UnifiedExampleResponse[];
+  errorResponses: UnifiedExampleResponse[];
 };
 
 export type UnifiedDoc = {
   meta: { title: string; version: string; date?: string | null; organization?: string | null; docsCode?: string | null };
   intro: { summary?: string | null; purpose?: string | null; audience?: string[] | null; terms?: { term: string; definition: string }[] | null };
   api_overview: {
-    servers: { url: string; description?: string; env?: 'prod'|'test'|'dev'|null }[];
+    servers: { url: string; description?: string; env?: 'prod'|'test'|'dev'|null; host?: string | null }[];
     security: { scheme: string; description?: string; flows?: string[] | null }[];
     tags: { name: string; description?: string }[];
   };

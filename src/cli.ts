@@ -51,7 +51,7 @@ program
       unified = loadUnifiedJson(resolvedInput);
     } else {
       const spec = loadOpenAPI(resolvedInput);
-      unified = mapToUnified(spec, { includeNested: !!opts.includeNested });
+      unified = mapToUnified(spec, { includeNested: !!opts.includeNested, sourcePath: resolvedInput });
     }
     const resolvedSchemaPath = resolvePathAcrossCwds(opts.schema);
     if (!resolvedSchemaPath) {
