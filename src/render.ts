@@ -63,10 +63,17 @@ export function renderHtml(unified: any, templateDir: string, outPath?: string, 
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, html, 'utf-8');
     const staticDir = options.staticDir ? path.resolve(options.staticDir) : null;
+    const assetsDir = path.resolve('assets');
     if (staticDir) {
       const destDir = path.join(path.dirname(outPath), path.basename(staticDir));
       if (path.resolve(destDir) !== staticDir) {
         copyStaticDirectory(staticDir, destDir);
+      }
+    }
+    if (assetsDir) {
+      const destDir = path.join(path.dirname(outPath), path.basename(assetsDir));
+      if (path.resolve(destDir) !== assetsDir) {
+        copyStaticDirectory(assetsDir, destDir);
       }
     }
   }

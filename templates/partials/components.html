@@ -211,8 +211,13 @@
 
 {% macro renderPayloadBlock(payload, emptyText='—') %}
   {% if payload and payload.example is not none and payload.example is not undefined %}
+    {% set mediaType = (payload.mediaType or '') | lower %}
+    {% set isJson = mediaType and ('json' in mediaType) %}
+    {% if not isJson and (payload.example is not string) %}
+      {% set isJson = true %}
+    {% endif %}
     {% if payload.example is string %}
-      <pre><code>{{ payload.example }}</code></pre>
+      <pre><code{% if isJson %} class="language-json"{% endif %}>{{ payload.example }}</code></pre>
     {% else %}
       <pre><code class="language-json">{{ payload.example | json(2) }}</code></pre>
     {% endif %}

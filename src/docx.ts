@@ -108,6 +108,26 @@ function inlineTableStylesForDocx(html: string): string {
     });
 }
 
+function inlineCodeBlockStylesForDocx(html: string): string {
+  const preStyle = 'background:#F8FAFC;border:1pt solid #CBD5E1;border-radius:8pt;padding:12pt;font-family:"Consolas","Courier New",monospace;font-size:10pt;white-space:pre-wrap;word-break:break-word;';
+  const codeStyle = 'background:transparent;border:0;padding:0;display:block;white-space:inherit;font-family:"Consolas","Courier New",monospace;font-size:10pt;';
+  const withPreStyles = html.replace(/<pre\b([^>]*)>/gi, (match, attrs) => {
+    if (/style=/i.test(attrs)) {
+      return match.replace(/style=(["'])(.*?)\1/i, (_m: string, quote: string, value: string) => `style=${quote}${value};${preStyle}${quote}`);
+    }
+    return `<pre${attrs} style="${preStyle}">`;
+  });
+  return withPreStyles.replace(/<code\b([^>]*)>/gi, (match, attrs) => {
+    if (!/class\s*=\s*(["']).*?language-/i.test(attrs)) {
+      return match;
+    }
+    if (/style=/i.test(attrs)) {
+      return match.replace(/style=(["'])(.*?)\1/i, (_m: string, quote: string, value: string) => `style=${quote}${value};${codeStyle}${quote}`);
+    }
+    return `<code${attrs} style="${codeStyle}">`;
+  });
+}
+
 // Подыскивает реальный путь к ресурсу изображения среди заданных директорий.
 function resolveAssetPath(src: string, assetDirs: string[]): string | null {
   const normalized = src.split('#')[0]?.split('?')[0] ?? src;
@@ -193,18 +213,23 @@ function getDocxStyles(): string {
   if (cachedDocxStyles !== null) {
     return cachedDocxStyles;
   }
-  const defaultStyles = `
+const defaultStyles = `
 body { font-family: "Arial", "Calibri", "Segoe UI", sans-serif; font-size: 12pt; line-height: 1.5; color: #000000; margin: 0; }
 h1 { font-size: 14pt; color: #000000; margin: 24pt 0 12pt; font-weight: 700; }
 h2 { font-size: 14pt; color: #000000; margin: 18pt 0 10pt; font-weight: 600; }
 h3 { font-size: 14pt; color: #000000; margin: 14pt 0 8pt; font-weight: 600; }
+h4 { font-size: 14pt; color: #000000; margin: 14pt 0 8pt; font-weight: 600; }
+h5 { font-size: 14pt; color: #000000; margin: 14pt 0 8pt; font-weight: 600; }
 p { margin: 0 0 12pt; text-align: justify; }
 ul, ol { margin: 0 0 10pt 18pt; }
 li { margin-bottom: 4pt; }
 strong { font-weight: 600; }
 em { font-style: italic; }
-pre { background: #F8FAFC; border: 1px solid #CBD5E1; padding: 10px; border-radius: 6px; font-family: "Consolas", "Courier New", monospace; font-size: 10pt; white-space: pre-wrap; word-break: break-word; }
-code { font-family: "Consolas", "Courier New", monospace; font-size: 10pt; background: #F3F4F6; padding: 0 2px; border-radius: 3px; }
+pre { background: #F8FAFC; border: 1pt solid #CBD5E1; padding: 12pt; border-radius: 8pt; font-family: "Consolas", "Courier New", monospace; font-size: 10pt; white-space: pre-wrap; word-break: break-word; }
+code { font-family: "Consolas", "Courier New", monospace; font-size: 10pt; background: #F3F4F6; padding: 0 2pt; border-radius: 3pt; }
+pre code { background: transparent; padding: 0; border: 0; display: block; }
+.example-block { border: 1pt solid #CBD5E1; border-radius: 10pt; padding: 14pt; background: #FFFFFF; margin: 0 0 18pt; box-shadow: inset 0 0 0 1pt rgba(203, 213, 225, 0.35); }
+.example-block h5 { margin: 0 0 8pt; font-size: 12pt; font-weight: 600; color: #000000; }
 table { font-size: 11pt; }
 .docx-title { text-align: center; padding-top: 120pt; color: #000000; }
 .docx-title-logo { width: 236px; height: auto; margin: 0 auto 40pt; }
@@ -302,8 +327,10 @@ export function renderDocxFromHtml(
   const htmlWithJson = formatJsonBlocks(htmlWithStyles);
   // Добавляем инлайновые таблицы и границы для Word.
   const htmlWithInlineTableStyles = inlineTableStylesForDocx(htmlWithJson);
+  // Добавляем рамки и стили для блоков кода.
+  const htmlWithInlineCodeStyles = inlineCodeBlockStylesForDocx(htmlWithInlineTableStyles);
   // Переписываем пути к изображениям на file:// URL.
-  const rewritten = rewriteImageSources(htmlWithInlineTableStyles, assetDirs);
+  const rewritten = rewriteImageSources(htmlWithInlineCodeStyles, assetDirs);
   // Поднимаем уровни заголовков.
   const promotedHeadings = liftHeadingLevels(rewritten);
   // Оборачиваем HTML титульным листом и оглавлением.

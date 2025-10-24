@@ -121,6 +121,45 @@ code {
   font-size: 0.95em;
 }
 
+pre {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 12px;
+  font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
+}
+
+pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  display: block;
+  white-space: inherit;
+  font-size: inherit;
+}
+
+.example-block {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 10px 30px -26px rgba(15, 23, 42, 0.45);
+  margin-bottom: 1.5rem;
+}
+
+.example-block h5 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #102a43;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -329,13 +368,16 @@ tbody tr:nth-child(even) td {
 
 .schema-examples pre {
   margin: 0;
-  background: #0f172a;
-  color: #f8fafc;
-  border-radius: 10px;
   padding: 1rem 1.25rem;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 12px;
+  font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.9rem;
+  line-height: 1.5;
   overflow-x: auto;
-  box-shadow: 0 18px 32px -24px rgba(15, 23, 42, 0.5);
+  white-space: pre;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
 }
 
 

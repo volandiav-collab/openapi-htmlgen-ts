@@ -346,6 +346,32 @@ function buildMediaContent(spec: any, content: any): UnifiedMediaContent[] {
   return items;
 }
 
+function isJsonMediaType(value: string | undefined | null): boolean {
+  if (!value) return false;
+  const normalized = value.toLowerCase();
+  const [base] = normalized.split(';', 1);
+  const target = base?.trim() ?? normalized;
+  return target.endsWith('/json') || target.includes('+json') || target === 'json';
+}
+
+function normalizeExampleValue(mediaType: string, example: unknown): unknown {
+  if (typeof example !== 'string') {
+    return example;
+  }
+  if (!isJsonMediaType(mediaType)) {
+    return example;
+  }
+  const trimmed = example.trim();
+  if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) {
+    return example;
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return example;
+  }
+}
+
 function buildExamplePayloads(spec: any, content: any): UnifiedExamplePayload[] {
   const result: UnifiedExamplePayload[] = [];
   for (const [mediaType, def] of Object.entries<any>(content ?? {})) {
@@ -354,9 +380,10 @@ function buildExamplePayloads(spec: any, content: any): UnifiedExamplePayload[] 
         ? def.example
         : pickExampleFromExamples(def?.examples);
     const schemaExample = pickSchemaExample(spec, def?.schema);
+    const chosen = payloadExample ?? schemaExample;
     result.push({
       mediaType,
-      example: payloadExample ?? schemaExample
+      example: normalizeExampleValue(mediaType, chosen)
     });
   }
   return result;
