@@ -12,6 +12,7 @@ export type UnifiedSchemaProperty = {
   example?: unknown;
   children?: UnifiedSchemaProperty[];
   childrenLabel?: string | null;
+  contextLabel?: string | null;
 };
 
 export type UnifiedSchema = {

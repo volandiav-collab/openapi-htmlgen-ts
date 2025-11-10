@@ -121,18 +121,18 @@ info:
 
     #### Шаг 4. Callback-уведомление от МО о статусе
     **Описание:** МО уведомляет СК о результате обработки списка (успешно, частично с ошибками).
-    Формат соответствует схеме `InsuredPersonListProcessingStatus.yaml`.
+    Формат соответствует схеме `InsuredPersonListProcessingStatus.yaml`. Коды и описания
+    ошибок используются из каталога `x-error-catalog`.
     **Примеры:**
 
     - Все записи успешно обработаны:
       
     ```http
-    POST /insured-persons/status HTTP/1.1
+    POST /insured-persons/statuses HTTP/1.1
     Host: notif.sk.example.ru
     Content-Type: application/json
     X-JWS-Signature: <Подпись ГОСТ>
     ```
-    
     ```json
     {
       "insuredPersonId": "7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e",
@@ -149,11 +149,12 @@ info:
     - Часть записей с ошибками по застрахованным лицам:
 
     ```http
-    POST /insured-persons/status HTTP/1.1
+    POST /insured-persons/statuses HTTP/1.1
     Host: notif.sk.example.ru
     Content-Type: application/json
     X-JWS-Signature: <Подпись ГОСТ>
     ```
+
     ```json
     {
       "insuredPersonId": "7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e",
@@ -167,13 +168,19 @@ info:
       "InsuredPersonIssue": [
         {
           "seriesAndNumberDms": "DMS-0001-01-2025",
-          "errorCode": "INVALID_SNILS",
-          "message": "Некорректный формат СНИЛС"
+          "errorCode": "Format.Invalid",
+          "rule": "0",
+          "reason": "Формат значения не соответствует спецификации (шаблон/маска/regex).",
+          "errorDescription": "Унифицированная ошибка формата. В ответе указывается 'path', напр.: .Policy.number (не прошёл regex), .Snils.value (контрольное число/маска), .Document.series (маска). Доменные проверки могут возвращаться отдельными кодами, но базовая ошибка формата фиксируется этим кодом.",
+          "details": "Некорректный формат СНИЛС: 123-456-789 00."
         },
         {
           "seriesAndNumberDms": "DMS-0003-03-2025",
-          "errorCode": "PROGRAM_NOT_FOUND",
-          "message": "Указанная программа страхования не зарегистрирована в МО"
+          "errorCode": "Risks.ReferenceMissingOrNotUsed",
+          "rule": "12",
+          "reason": "Рекомендуется единый справочник рисков/расширений/франшиз.",
+          "errorDescription": "Риск/расширение передан без привязки к справочнику или с признаком «не из справочника» без должной обработки. Источник: Правило 12.",
+          "details": "Программа ДМС PROGRAM-2025 отсутствует в согласованном справочнике МО."
         }
       ]
     }
@@ -182,7 +189,7 @@ info:
     - Отклонено целиком (ошибка верхнего уровня):
 
     ```http
-    POST /insured-persons/status HTTP/1.1
+    POST /insured-persons/statuses HTTP/1.1
     Host: notif.sk.example.ru
     Content-Type: application/json
     X-JWS-Signature: <Подпись ГОСТ>
@@ -194,9 +201,12 @@ info:
       "processedAt": "2025-06-27T16:10:00Z",
       "TopLevelIssues": [
         {
-          "errorCode": "CONTRACT_MISMATCH",
-          "message": "Договор ДМС не найден или не активен",
-          "documentNumber": "DMS-12234-10\2023-F"
+          "errorCode": "Routing.ModelMismatchWithAgreement",
+          "rule": "8",
+          "reason": "Выбранная модель взаимодействия фиксируется в договоре/реестре OpenAPI.",
+          "errorDescription": "Списки направлены не по согласованной модели (головная/конкретная клиника/отдельные договоры). Источник: Правило 8.",
+          "documentNumber": "DMS-12234-10/2023-F",
+          "details": "Договор ДМС не зарегистрирован для выбранной модели обмена."
         }
       ],
       "InsuredPersonSummary": {
@@ -248,13 +258,8 @@ paths:
       tags:
         - InsuredPerson - Список застрахованных лиц
       summary: Список застрахованных лиц по договорам добровольного медицинского страхования
-      description: |-
-        Конечная точка позволяет получить список застрахованных лиц по договорам добровольного медицинского страхования 
-        <img alt="UML диаграмма" src="static/openapi-images/insured-person-v2.svg" />
+      description: Конечная точка позволяет получить список застрахованных лиц по договорам добровольного медицинского страхования  <img alt="UML диаграмма" src="static/openapi-images/insured-person.svg" />
       operationId: getInsuredPerson
-      x-externalDocs:
-        description: Примеры применения
-        url: static/openapi-docs/account-consents-pe.md      
       parameters:
         - $ref: '#/components/parameters/page'
         - $ref: '#/components/parameters/If-Modified-Since'
@@ -343,6 +348,7 @@ paths:
                   type: string
                   format: uuid
                   description: Уникальный идентификатор списка застрахованных лиц
+                  example: 7e2f9c8a-3b1d-4c2e-9d7a-8f6e2b1c4d5e
                 actionWithInsuredPerson:
                   type: string
                   description: Действие с застрахованными лицами. Обязательное поле.
@@ -383,13 +389,16 @@ paths:
       security:
         - TPPInsuredPersonOAuth2Security:
             - insuredperson
-  /insured-persons/status:
+  /insured-persons/statuses:
+    x-redocly-ignore:
+      path-segment-plural:
+        - Идентификатор статуса согласован как термин в единственном числе.
     post:
       tags:
-        - Notifications
+        - Notifications status
       summary: Callback-уведомление от МО о статусе обработки списка застрахованных лиц
       description: |
-        Медицинская организация подтверждает приём списка и отправляет информацию о статусе обработки в адрес страховой компании.
+        Медицинская организация подтверждает приём списка и отправляет информацию о статусе обработки в адрес страховой компании. Тело запроса содержит агрегированные итоги (`InsuredPersonSummary`) и массивы ошибок (`TopLevelIssues`, `InsuredPersonIssue`) с кодами из каталога `x-error-catalog`. <img alt="UML диаграмма" src="static/openapi-images/insured-person-list-processing-status.svg" />
       operationId: notifyInsuredPersonProcessingStatus
       requestBody:
         required: true
@@ -420,11 +429,17 @@ paths:
                     rejectedRecords: 2
                   InsuredPersonIssue:
                     - seriesAndNumberDms: DMS-0001-01-2025
-                      errorCode: INVALID_SNILS
-                      message: Некорректный формат СНИЛС
+                      errorCode: Format.Invalid
+                      rule: '0'
+                      reason: Формат значения не соответствует спецификации (шаблон/маска/regex).
+                      errorDescription: 'Унифицированная ошибка формата. В ответе указывается ''path'', напр.: .Policy.number (не прошёл regex), .Snils.value (контрольное число/маска), .Document.series (маска). Доменные проверки могут возвращаться отдельными кодами, но базовая ошибка формата фиксируется этим кодом.'
+                      details: 'Некорректный формат СНИЛС: 123-456-789 00.'
                     - seriesAndNumberDms: DMS-0003-03-2025
-                      errorCode: PROGRAM_NOT_FOUND
-                      message: Указанная программа страхования не зарегистрирована в МО
+                      errorCode: Risks.ReferenceMissingOrNotUsed
+                      rule: '12'
+                      reason: Рекомендуется единый справочник рисков/расширений/франшиз.
+                      errorDescription: 'Риск/расширение передан без привязки к справочнику или с признаком «не из справочника» без должной обработки. Источник: Правило 12.'
+                      details: Программа ДМС PROGRAM-2025 отсутствует в согласованном справочнике МО.
               pending:
                 summary: Обработка ещё выполняется
                 value:
@@ -442,9 +457,12 @@ paths:
                   status: rejected
                   processedAt: '2025-06-27T16:10:00Z'
                   TopLevelIssues:
-                    - errorCode: CONTRACT_MISMATCH
-                      message: Договор ДМС не найден или не активен
-                      documentNumber: DMS-12234-10\2023-F
+                    - errorCode: Routing.ModelMismatchWithAgreement
+                      rule: '8'
+                      reason: Выбранная модель взаимодействия фиксируется в договоре/реестре OpenAPI.
+                      errorDescription: 'Списки направлены не по согласованной модели (головная/конкретная клиника/отдельные договоры). Источник: Правило 8.'
+                      documentNumber: DMS-12234-10/2023-F
+                      details: Договор ДМС не зарегистрирован для выбранной модели обмена.
                   InsuredPersonSummary:
                     totalRecords: 100
                     acceptedRecords: 0
@@ -719,6 +737,22 @@ components:
           description: Сведения об адресе подразделения
           allOf:
             - $ref: '#/components/schemas/AddressBranch'
+    PersonalDataChangeString:
+      type: object
+      description: |
+        Оболочка изменения простого значения персональных данных. Используется, когда список передаётся со значением `actionWithInsuredPerson = Changment`. Позволяет указать предыдущее значение, новое значение (если доступно) и дату фиксации изменения.
+      additionalProperties: false
+      required:
+        - oldValue
+      properties:
+        oldValue:
+          type: string
+          description: Значение, действовавшее до изменения.
+          example: старое-значение
+        newValue:
+          type: string
+          description: Новое значение. Можно опустить, если значение только удаляется.
+          example: новое-значение
     ActiveOrHistoricCurrencyCode:
       description: Код валюты, соответствующий международному стандарту ISO 4217
       type: string
@@ -804,8 +838,20 @@ components:
         agreedTreatmentLimit:
           description: Лимит ответственности по согласованному объему лечения
           example: '5000.00'
-          type: string
-          pattern: ^\d{1,15}\.\d{2,4}$
+          oneOf:
+            - type: string
+              pattern: ^\d{1,15}\.\d{2,4}$
+            - allOf:
+                - $ref: '#/components/schemas/PersonalDataChangeString'
+                - properties:
+                    oldValue:
+                      type: string
+                      pattern: ^\d{1,15}\.\d{2,4}$
+                      example: '600000.00'
+                    newValue:
+                      type: string
+                      pattern: ^\d{1,15}\.\d{2,4}$
+                      example: '750000.00'
         СurrencyInfo:
           description: Валюта взаиморасчета
           allOf:
@@ -830,20 +876,21 @@ components:
                 pattern: ^[\w\W]{1,35}$
                 minLength: 1
                 maxLength: 35
+                example: AMBULATORY
               riscShortName:
                 description: Дополнительная информация, связанная с риском.
                 type: string
                 pattern: ^[\w\W]{1,70}$
                 minLength: 1
                 maxLength: 70
-                example:
-                  - Амбулаторно-поликлиническая помощь
+                example: Амбулаторно-поликлиническая помощь
               riscDescriptions:
                 description: Дополнительная информация, связанная с риском.
                 type: string
                 pattern: ^[\w\W]{1,255}$
                 minLength: 1
                 maxLength: 255
+                example: Покрытие консультаций, диагностики и лечения в амбулаторных условиях.
       required:
         - programName
         - InsuranceRisks
@@ -975,9 +1022,9 @@ components:
           example: 1234-567890
         issueDate:
           type: string
-          pattern: ^\d{2}\.\d{2}.\d{4}$
-          description: Дата выдачи документа (Issue Date) in DD.MM.YYYY format.
-          example: 01.01.2010
+          format: date
+          description: Дата выдачи документа (Issue Date) в формате ISO 8601 (YYYY-MM-DD).
+          example: '2010-01-01'
         issuingAuthority:
           type: string
           maxLength: 255
@@ -1044,9 +1091,9 @@ components:
       properties:
         birthDate:
           type: string
-          pattern: ^\d{2}\.\d{2}.\d{4}$
-          description: Дата рождения (Date of Birth) in DD.MM.YYYY format.
-          example: 01.01.1980
+          format: date
+          description: Дата рождения (Date of Birth) в формате ISO 8601 (YYYY-MM-DD).
+          example: '1980-01-01'
         snils:
           type: string
           pattern: ^\d{3}-\d{3}-\d{3}-\d{2}$
@@ -1132,11 +1179,224 @@ components:
       required:
         - birthDate
         - FioContact
-    InsuredPersonContent:
+    PersonalDataChangeObject:
+      type: object
+      description: |
+        Оболочка изменения составного объекта персональных данных. Используется в списках на изменение (`actionWithInsuredPerson = Changment`) и позволяет указать прежнее и новое состояния сущности, а также дату фиксации изменения.
+      additionalProperties: false
+      required:
+        - oldValue
+      properties:
+        oldValue:
+          type: object
+          description: Значение объекта до изменения.
+        newValue:
+          type: object
+          description: Новое состояние объекта. Можно опустить, если объект удаляется.
+        changedAt:
+          type: string
+          format: date
+          description: Дата фиксации изменения в формате ISO 8601 (YYYY-MM-DD).
+          example: '2025-10-22'
+    InsuredPersonDetailsChange:
+      type: object
+      description: |
+        Представление сведений о физическом лице для списков с действием `Changment`. Каждое поле может содержать оболочку с обязательными полями `oldValue` и `changedAt`, а также опциональным `newValue`.
+      additionalProperties: false
+      properties:
+        FioContact:
+          description: Изменение ФИО застрахованного лица.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeObject'
+            - example:
+                oldValue:
+                  familyName: Иванова
+                  name: Мария
+                  patronymic: Петровна
+                newValue:
+                  familyName: Иванова
+                  name: Мария
+                  patronymic: Алексеевна
+        birthDate:
+          description: Изменение даты рождения.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeString'
+            - properties:
+                oldValue:
+                  type: string
+                  format: date
+                  example: '1985-04-01'
+                newValue:
+                  type: string
+                  format: date
+                  example: '1985-01-04'
+        IdentityDocumentInfo:
+          description: Изменение документа, удостоверяющего личность.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeObject'
+            - properties:
+                oldValue:
+                  $ref: '#/components/schemas/IdentityDocumentInfo'
+                newValue:
+                  $ref: '#/components/schemas/IdentityDocumentInfo'
+        Address:
+          description: Изменение адреса проживания.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeObject'
+            - example:
+                oldValue:
+                  postalCode: '141400'
+                  regionCode: '50'
+                  regionName: Московская область
+                  city: Химки
+                  street: Панфилова
+                  house: '21'
+                newValue:
+                  postalCode: '125047'
+                  regionCode: '77'
+                  regionName: г. Москва
+                  city: Москва
+                  street: Правды
+                  house: '26'
+                changedAt: '2025-10-22'
+        snils:
+          description: Изменение номера СНИЛС.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeString'
+            - properties:
+                oldValue:
+                  type: string
+                  pattern: ^\d{3}-\d{3}-\d{3}-\d{2}$
+                  example: 123-456-789-01
+                newValue:
+                  type: string
+                  pattern: ^\d{3}-\d{3}-\d{3}-\d{2}$
+                  example: 987-654-321-00
+        gender:
+          description: Изменение пола застрахованного лица.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeString'
+            - properties:
+                oldValue:
+                  type: string
+                  enum:
+                    - '1'
+                    - '2'
+                  example: '1'
+                newValue:
+                  type: string
+                  enum:
+                    - '1'
+                    - '2'
+                  example: '2'
+        omsPolicyNumber:
+          description: Изменение номера полиса ОМС.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeString'
+            - properties:
+                oldValue:
+                  type: string
+                  pattern: ^\d{16}$
+                  example: '1234567890123456'
+                newValue:
+                  type: string
+                  pattern: ^\d{16}$
+                  example: '6543210987654321'
+        position:
+          description: Изменение должности.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeString'
+            - properties:
+                oldValue:
+                  type: string
+                  pattern: ^[\w\W]{1,150}$
+                  example: Менеджер
+                newValue:
+                  type: string
+                  pattern: ^[\w\W]{1,150}$
+                  example: Руководитель группы
+        category:
+          description: Изменение категории застрахованного лица.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeString'
+            - properties:
+                oldValue:
+                  type: string
+                  pattern: ^[\w\W]{1,150}$
+                  example: Стандарт
+                newValue:
+                  type: string
+                  pattern: ^[\w\W]{1,150}$
+                  example: VIP
+        employerInfo:
+          description: Изменение сведений о работодателе.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeString'
+            - properties:
+                oldValue:
+                  type: string
+                  pattern: ^[\w\W]{1,500}$
+                  example: ООО «Компания А»
+                newValue:
+                  type: string
+                  pattern: ^[\w\W]{1,500}$
+                  example: АО «Компания Б»
+        employerType:
+          description: Изменение категории работника.
+          allOf:
+            - $ref: '#/components/schemas/PersonalDataChangeString'
+            - properties:
+                oldValue:
+                  type: string
+                  pattern: ^[\w\W]{1,100}$
+                  example: Основной работодатель
+                newValue:
+                  type: string
+                  pattern: ^[\w\W]{1,100}$
+                  example: Член семьи
+        ContactInfo:
+          description: Изменение контактных данных.
+          type: object
+          additionalProperties: false
+          properties:
+            phoneNumberFax:
+              description: Изменение телефонного номера или факса.
+              allOf:
+                - $ref: '#/components/schemas/PersonalDataChangeString'
+                - properties:
+                    oldValue:
+                      type: string
+                      minLength: 1
+                      maxLength: 255
+                      example: +7-495-000-00-01
+                    newValue:
+                      type: string
+                      minLength: 1
+                      maxLength: 255
+                      example: +7-495-999-99-99
+            emailAddress:
+              description: Изменение адреса электронной почты.
+              allOf:
+                - $ref: '#/components/schemas/PersonalDataChangeString'
+                - properties:
+                    oldValue:
+                      type: string
+                      pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+                      example: old@example.com
+                    newValue:
+                      type: string
+                      pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+                      example: new@example.com
+    InsuredPersonInformation:
       type: object
       description: Тип сведений застрахованного лица
       additionalProperties: false
       properties:
+        changedAt:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Дата фиксации изменения сведений о риске (YYYY-MM-DD).
+          example: '2025-10-22'
         seriesAndNumberDms:
           type: string
           pattern: ^[\w\W]{1,255}$
@@ -1145,14 +1405,14 @@ components:
           description: Серия и номер полиса добровольного медицинского страхования
           example: DMS-22222-3-23
         startDate:
-          type: string
           description: Дата начала действия полиса добровольного медицинского страхования
-          example: 01.01.2023
+          example: '2023-01-01'
+          type: string
           format: date
         endDate:
-          type: string
           description: Дата окончания действия полиса добровольного медицинского страхования
-          example: 31.12.2023
+          example: '2023-12-31'
+          type: string
           format: date
         InsuredProgramms:
           description: Программы страхования
@@ -1160,10 +1420,10 @@ components:
           items:
             $ref: '#/components/schemas/InsuredPersonProgramm'
         InsuredPersonDetails:
-          type: object
           description: Сведения о физическом лице
-          allOf:
+          oneOf:
             - $ref: '#/components/schemas/IndividualInfo'
+            - $ref: '#/components/schemas/InsuredPersonDetailsChange'
         additionalInfo:
           type: string
           description: Информационное поле
@@ -1334,7 +1594,7 @@ components:
           maxItems: 1000
           type: array
           items:
-            $ref: '#/components/schemas/InsuredPersonContent'
+            $ref: '#/components/schemas/InsuredPersonInformation'
         ContractDocumentInfo:
           type: object
           description: Сведения о договорном документе
@@ -1548,81 +1808,58 @@ components:
           totalPages: 1
       additionalProperties: false
     OBRUErrorResponseErrorCode:
-      description: Низкоуровневое описание ошибки. Поставщик услуг должен заполнить сообщение детальным описанием ошибки, не раскрывая конфиденциальную информацию.
+      description: |
+        Низкоуровневое описание ошибки. Использует коды из каталога ошибок `x-error-catalog` (общие ошибки формата HTTP) и коды, отражающие требования безопасности (аутентификация, подпись сообщений).
       type: string
-      example: RU.CBR.Field.Missing
+      example: Field.Missing
       enum:
-        - RU.CBR.Field.Expected
-        - RU.CBR.Field.Invalid
-        - RU.CBR.Field.InvalidDate
-        - RU.CBR.Field.Missing
-        - RU.CBR.Header.Invalid
-        - RU.CBR.Header.Missing
-        - RU.CBR.Resource.InvalidFormat
-        - RU.CBR.Resource.NotFound
-        - RU.CBR.Resource.NotCreated
-        - RU.CBR.Rules.AfterCutOffDateTime
-        - RU.CBR.Signature.Invalid
-        - RU.CBR.Signature.InvalidClaim
-        - RU.CBR.Signature.MissingClaim
-        - RU.CBR.Signature.Malformed
-        - RU.CBR.Signature.Missing
-        - RU.CBR.Unsupported.AccountIdentifier
-        - RU.CBR.Unsupported.LocalInstrument
-        - RU.CBR.Operation.Unprocessable
-        - RU.CBR.Authenticate.InvalidScope
-        - RU.CBR.Authenticate.InvalidConsent
-        - RU.CBR.Authenticate.SuspiciousActivityDetected
-        - RU.CBR.Rules.ResourceAlreadyExists
-        - RU.CBR.UnexpectedError
+        - Field.Missing
+        - Format.Invalid
+        - Type.Mismatch
+        - Value.Invalid
+        - Enum.Invalid
+        - Header.Missing
+        - Header.Invalid
+        - Authenticate.InvalidScope
+        - Authenticate.InvalidConsent
+        - Authenticate.SuspiciousActivityDetected
+        - Signature.Invalid
+        - Signature.InvalidClaim
+        - Signature.MissingClaim
+        - Signature.Malformed
+        - Signature.Missing
       x-enum-descriptions:
-        - 'RU.CBR.Field.Expected: (HTTP статус 400). Если поля передаются парой (ключ-значение) и значение не было передано. В поле path должен передаваться путь к ожидаемому полю (например, ErrorResponse.Errors.path == “AccountResponse.Data.Account.AccountDetails.identification”).Например, для допустимого значения поля «schemeName» должно передаваться соответствующее значение идентификатора в поле «identification».'
-        - 'RU.CBR.Field.Invalid: (HTTP статус 400).В поле указано недопустимое значение или длина предоставленного значения превышает соответствующую максимальную длину поля в домене ППИУ. Ссылка на недопустимое поле должна быть указана в поле path (например,ErrorResponse.Errors.path == “AccountResponse.Data.Account.AccountDetails.schemeName”). В поле URL может быть ссылка на веб-страницу, объясняющую правильное поведение. Проблема должна быть подробно описана в сообщении об ошибке (поле ErrorResponse.Errors.message).'
-        - 'RU.CBR.Field.InvalidDate: (HTTP статус 400).Указана неверная дата. Например, когда ожидается будущая дата, а указана дата в прошлом или текущая дата. В сообщении можно указать актуальную проблему с датой. Ссылка на недопустимое поле должна быть указана в поле path, а в поле URL может быть ссылка на веб-страницу, объясняющую правильное поведение.'
-        - 'RU.CBR.Field.Missing: (HTTP статус 400).Обязательное поле, необходимое для API, отсутствует в полезной нагрузке. Данный код ошибки можно использовать, если ошибка еще не определена при проверке RU.CBR.Resource.InvalidFormat. Ссылка на отсутствующее поле должна быть указана в поле path, а в поле URL может быть ссылка на веб-страницу, объясняющую правильное поведение.'
-        - 'RU.CBR.Header.Invalid: (HTTP статус 400).В элементе заголовка HTTP указано неверное значение. Элемент заголовка HTTP должен быть указан в элементе пути.'
-        - 'RU.CBR.Header.Missing: (HTTP статус 400).Обязательный элемент HTTP-заголовка не был предоставлен. Элемент заголовка HTTP должен быть указан в элементе path. Элемент пути кода ошибки должен быть заполнен элементом ресурса согласия, который является недопустимым.'
-        - 'RU.CBR.Resource.InvalidFormat: (HTTP статус 400).Json-схема полезной нагрузки не соответствует конечной точке. Например, конечная точка POST /account-consents вызывается с полезной нагрузкой JSON, которая не может быть проанализирована в классе ConsentRequest.'
-        - 'RU.CBR.Resource.NotFound: (HTTP статус 400).Ресурс с указанным идентификатором не существует или не может быть обработан (в том числе неприемлимый формат или значение идентификатора ресурса).'
-        - 'RU.CBR.Resource.NotCreated: (HTTP статус 400).Ресурс с указанным идентификатором еще не создан и не может быть передан в ответном сообщении. Для асинхронных вызовов. Например, получение выписки по счету, где сначала создается ресурс выписки (метод POST /statements/{accountId}) и в ответном сообщение приходит идентификатор созданного ресурса выписки, но для наполнения выписки данными ППИУ требуется некоторое время. Соответственно, будет приходить данное сообщение об ошибке.'
-        - 'RU.CBR.Rules.AfterCutOffDateTime: (HTTP статус 400).Ресурс согласия или ресурс платежа запрашиваются после даты CutOffDateTime.'
-        - 'RU.CBR.Signature.Invalid: (HTTP статус 400).Заголовок подписи x-jws-signature был проанализирован и имеет действительный заголовок JOSE, соответствующий спецификации. Но сама подпись не может быть проверена.'
-        - 'RU.CBR.Signature.InvalidClaim: (HTTP статус 400).Заголовок JOSE в элементе x-jws-signature имеет одно или несколько утверждений (claim) с недопустимым значением. (например, утверждение kid, которое не принимает сертификат). Наименование отсутствующего утверждения должно передаваться в поле path ответа об ошибке.'
-        - 'RU.CBR.Signature.MissingClaim: (HTTP статус 400).Заголовок JOSE в элементе x-jws-signature имеет одно или несколько обязательных утверждений, которые не указаны. Имя пропущенного утверждения должно быть указано в поле path ответа об ошибке.'
-        - 'RU.CBR.Signature.Malformed: (HTTP статус 400).x-jws-signature в заголовке запроса была искажена и не могла быть проанализирована как допустимый JWS.'
-        - 'RU.CBR.Signature.Missing: (HTTP статус 400).Запрос API предполагает x-jws-signature в заголовке, но элемент отсутствовал.'
-        - 'RU.CBR.Unsupported.AccountIdentifier: (HTTP статус 400).Идентификатор счета не поддерживается для данной схемы. Элемент path должен быть заполнен путем к элементу accountIdentifier.'
-        - 'RU.CBR.Unsupported.LocalInstrument: (HTTP статус 400).Указанный localInstrument не поддерживается ППИУ. Элемент path должен быть заполнен путем к элементу localInstrument. Элемент URL должен быть заполнен ссылкой на документацию ППИУ со списком поддерживаемых localInstrument.'
-        - 'RU.CBR.Operation.Unprocessable: (HTTP статус 400).Операция по извлечению ресурса не может быть выполнена или недопустима.'
-        - 'RU.CBR.Authenticate.InvalidScope: (HTTP статус 403).Предъявленный токен доступа не содержит область действия ("scope") необходимый для доступа к ресурсу.'
-        - 'RU.CBR.Authenticate.InvalidConsent: (HTTP статус 403).Отказано доступу к ресурсу с указанным идентификатором, так как согласие Пользователя, отсутствует, либо имеет не корректный статус, либо не содержит необходимых разрешений ("pernissions") на данный ресурс.'
-        - 'RU.CBR.Authenticate.SuspiciousActivityDetected: (HTTP статус 403).Доступ к ресурсу приостановлен по причине выявления подозрения на мошеннические действия.'
-        - 'RU.CBR.Rules.ResourceAlreadyExists: (HTTP статус 409).Ресурс с такими же параметрами уже существует.'
-        - 'RU.CBR.UnexpectedError: (HTTP статус 5xx).Данный код ошибки можно использовать при возникновении непредвиденной ошибки. ППИУ должен заполнить сообщение детальным описанием ошибки, не раскрывая конфиденциальную информацию.'
+        - 'Field.Missing: (HTTP статус 400). Обязательное поле спецификации отсутствует в запросе. Путь к полю передаётся в элементе path.'
+        - 'Format.Invalid: (HTTP статус 400). Значение не соответствует ожидаемому шаблону/регулярному выражению, указанному в спецификации.'
+        - 'Type.Mismatch: (HTTP статус 400). Фактический тип значения не совпадает с типом, определённым в схеме OpenAPI.'
+        - 'Value.Invalid: (HTTP статус 400). Значение выходит за допустимые диапазоны, нарушает min/max/length или иные инварианты.'
+        - 'Enum.Invalid: (HTTP статус 400). Значение не входит в перечень допустимых значений перечисления.'
+        - 'Header.Missing: (HTTP статус 400). Обязательный HTTP-заголовок отсутствует в запросе.'
+        - 'Header.Invalid: (HTTP статус 400). Значение HTTP-заголовка не соответствует требованиям спецификации (включая media type).'
+        - 'Authenticate.InvalidScope: (HTTP статус 403). Токен доступа не содержит требуемую область действия (scope) для обращения к ресурсу.'
+        - 'Authenticate.InvalidConsent: (HTTP статус 403). Отказано в доступе из-за отсутствия действительного согласия или необходимых разрешений.'
+        - 'Authenticate.SuspiciousActivityDetected: (HTTP статус 403). Доступ приостановлен вследствие выявления подозрительной активности.'
+        - 'Signature.Invalid: (HTTP статус 400). Заголовок x-jws-signature присутствует, но подпись не проходит проверку.'
+        - 'Signature.InvalidClaim: (HTTP статус 400). В заголовке подписи указаны утверждения (claim) с недопустимыми значениями.'
+        - 'Signature.MissingClaim: (HTTP статус 400). В заголовке подписи отсутствует одно или несколько обязательных утверждений.'
+        - 'Signature.Malformed: (HTTP статус 400). Значение заголовка x-jws-signature повреждено и не может быть интерпретировано как корректный JWS.'
+        - 'Signature.Missing: (HTTP статус 400). Требуемый заголовок x-jws-signature отсутствует в запросе.'
       x-enum-varnames:
-        - FieldExpected
-        - FieldInvalid
-        - FieldInvalidDate
         - FieldMissing
-        - HeaderInvalid
+        - FormatInvalid
+        - TypeMismatch
+        - ValueInvalid
+        - EnumInvalid
         - HeaderMissing
-        - ResourceInvalidFormat
-        - ResourceNotFound
-        - ResourceNotCreated
-        - RulesAfterCutOffDateTime
+        - HeaderInvalid
+        - AuthenticateInvalidScope
+        - AuthenticateInvalidConsent
+        - AuthenticateSuspiciousActivityDetected
         - SignatureInvalid
         - SignatureInvalidClaim
         - SignatureMissingClaim
         - SignatureMalformed
         - SignatureMissing
-        - UnsupportedAccountIdentifier
-        - UnsupportedLocalInstrument
-        - OperationUnprocessable
-        - AuthenticateInvalidScope
-        - AuthenticateInvalidConsent
-        - AuthenticateSuspiciousActivityDetected
-        - RulesResourceAlreadyExists
-        - UnexpectedError
     OBRUError:
       description: Контейнер с ошибкой
       type: object
@@ -1688,50 +1925,110 @@ components:
         - code
         - message
         - Errors
-    InsuredPersonListProcessingIssue:
+    ProcessingErrorCode:
+      type: string
+      description: |
+        Код ошибки обработки согласно корпоративному каталогу ошибок `x-error-catalog`. Значения описаны с привязкой к правилам взаимодействия в файле `components/schemas/x-error-catalog.yaml`.
+      enum:
+        - Field.Missing
+        - Format.Invalid
+        - Type.Mismatch
+        - Value.Invalid
+        - Enum.Invalid
+        - Detachment.ActionMismatch
+        - Identification.PolicyRequiredForDetachment
+        - TechReview.LogicInconsistency
+        - TechReview.RetroDateImpactUnresolved
+        - Processing.OutOfOrder
+        - Processing.DatetimeMissingOrInvalid
+        - Processing.PreviousCriticalUnresolvedxxx
+        - ChangeList.WrongChannelForField
+        - ChangeList.MissingNewValue
+        - ChangeList.OldValueRequiredByAgreement
+        - Coverage.NoNetworkClinicAvailable
+        - Coverage.ClinicRiskUnavailable
+        - Risks.ReferenceMismatch
+        - List.AgeSegmentationRequired
+        - Program.AgeCategoryMismatch
+        - Routing.ModelMismatchWithAgreement
+        - Routing.UnregisteredParticipant
+        - ErrorType.SeverityMisclassified
+        - List.SingleListPerJSONViolated
+        - Clinic.IdentificationAmbiguous
+        - Program.DuplicateInCatalog
+        - Risks.ReferenceMissingOrNotUsed
+        - Risks.ExtensionMismatch
+        - Risks.FranchiseParamsMissing
+        - ErrorHandling.CriticalNotResent
+        - ErrorHandling.NonCriticalResentIncorrectly
+        - Program.FactAdvanceMissing
+        - Program.FactAdvanceContractContradiction
+        - Retro.AttachEndDateInPastCritical
+        - Retro.ChangeStartEarlierAllowed
+        - Retro.DetachEndPastAdjustBySLA
+        - Retro.DetachStartPastNoChange
+        - Franchise.ProgramRecordMissing
+        - Franchise.ParamsMissing
+        - MultiProgram.AttachRequiresSeparateLists
+        - MultiProgram.DetachAllRequiresContract
+        - MultiProgram.DetachPartialRequiresProgramAndAnnex
+        - MultiProgram.ChangePartialMustUseChangeList
+        - Renewal.OverlappingPeriods
+        - Renewal.ChangeDateOutsideCoverage
+      example: Processing.DatetimeMissingOrInvalid
+    ProcessingError:
       type: object
       required:
         - errorCode
-        - message
+        - rule
+        - reason
+        - errorDescription
       properties:
         errorCode:
+          $ref: '#/components/schemas/ProcessingErrorCode'
+        rule:
           type: string
-          description: Код ошибки
-          pattern: ^[A-Z0-9_]{1,50}$
-          example: CONTRACT_NOT_FOUND
-        message:
+          description: |
+            Номер правила из каталога ошибок. Значение `0` соответствует общим техническим проверкам схемы OpenAPI, остальные номера — разделам бизнес-правил.
+          pattern: ^\d{1,2}$
+          example: '4'
+        reason:
           type: string
-          description: Описание ошибки
-          pattern: ^[\w\W]{1,500}$
-          example: Договор DMS-12234-10\2023-F не найден
-        documentNumber:
-          description: Номер документа, если ошибка связана с ним. При отсутствии номера принимает значение (без номера (б/н). Регистрационный номер в системе делопроизводства
-          type: string
-          pattern: ^[\w\W]{1,255}$
+          description: Краткое объяснение причины ошибки из каталога.
           minLength: 1
-          maxLength: 255
-          example: DMS-12234-10\2023-F
-    InsuredPersonProcessingIssue:
-      type: object
-      required:
-        - seriesAndNumberDms
-        - errorCode
-        - message
-      properties:
-        seriesAndNumberDms:
+          maxLength: 500
+          example: Дата окончания полиса отсутствует или указана неверно
+        errorDescription:
           type: string
-          description: Серия и номер ДМС-полиса застрахованного лица
-          example: DMS-0001-01-2025
-        errorCode:
-          type: string
-          description: Код ошибки обработки записи
-          example: INVALID_SNILS
-        message:
-          type: string
-          description: Описание ошибки
-          example: Некорректный формат СНИЛС
+          description: |
+            Детализированное описание ошибки из каталога. В payload может возвращаться без изменений или с уточнениями по конкретной ситуации.
+          minLength: 1
+          maxLength: 1000
+          example: Поле endDate должно быть передано в формате YYYY-MM-DD и не может быть пустым.
+    InsuredPersonListProcessingIssue:
+      allOf:
+        - $ref: '#/components/schemas/ProcessingError'
+        - type: object
+          properties:
+            documentNumber:
+              description: |
+                Номер документа, к которому относится ошибка (при наличии). При отсутствии номера допускается значение «б/н».
+              type: string
+              pattern: ^[\w\W]{1,255}$
+              minLength: 1
+              maxLength: 255
+              example: DMS-12234-10\2023-F
+            details:
+              type: string
+              description: |
+                Дополнительные сведения по контексту ошибки (для конкретного списка или документа), которые не входят в описание каталога.
+              minLength: 1
+              maxLength: 1000
+              example: Полис в списке отсутствует в каталоге договоров.
     InsuredPersonListProcessingStatus:
       type: object
+      description: |
+        Содержит агрегированную информацию о результате обработки списка застрахованных лиц со стороны страховой организации, включая уникальный идентификатор списка, итоговый статус, отметку времени завершения обработки и ссылки на ошибки. Используется для отображения сводных данных о том, сколько записей было обработано успешно, какие записи отклонены, а также для доступа к каталогу ошибок `InsuredPersonListProcessingIssue` и анализу проблем на уровне всей выборки и отдельных застрахованных лиц.
       required:
         - insuredPersonId
         - status
@@ -1742,6 +2039,7 @@ components:
           type: string
           format: uuid
           description: Идентификатор списка застрахованных лиц
+          example: 3d94c4ab-20a7-4d3d-ae5b-0b9c8a9e4f2a
         status:
           type: string
           enum:
@@ -1749,17 +2047,21 @@ components:
             - pending
             - rejected
           description: Текущий статус обработки
+          example: processed
         processedAt:
           type: string
           format: date-time
+          description: Дата и время фиксации текущего статуса обработки списка
+          example: '2024-01-15T14:30:00Z'
         TopLevelIssues:
           type: array
-          description: Ошибки верхнего уровня (по договору или блоку данных),  при наличии
+          description: |
+            Ошибки верхнего уровня (по договору или блоку данных), определяемые согласно каталогу ошибок `x-error-catalog`.
           items:
             $ref: '#/components/schemas/InsuredPersonListProcessingIssue'
         InsuredPersonSummary:
           type: object
-          description: Сводные результаты по результатом обработки данных записей застрахованного лица
+          description: Сводные результаты по обработке записей застрахованного лица
           required:
             - totalRecords
             - acceptedRecords
@@ -1776,9 +2078,10 @@ components:
               example: 2
         InsuredPersonIssue:
           type: array
-          description: Ошибки по каждому застрахованному лицу, при наличии
+          description: |
+            Ошибки по каждому застрахованному лицу (при наличии), с указанием кода из каталога ошибок и детального контекста.
           items:
-            $ref: '#/components/schemas/InsuredPersonProcessingIssue'
+            $ref: '#/components/schemas/InsuredPersonListProcessingIssue'
   responses:
     200InsuredPerson:
       description: Запрос успешно выполнен
@@ -1814,8 +2117,269 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/InsuredPersonResponse'
+          examples:
+            attachment-list:
+              summary: Список на прикрепление
+              description: Пример ответа со списком прикрепления новых застрахованных лиц.
+              value:
+                Data:
+                  InsuredPerson:
+                    - insuredPersonId: ax-2025-00001
+                      documentName: Список прикрепления ДМС
+                      documentNumber: ATT-2025-001
+                      dateOfDocument: '2025-10-22'
+                      actionWithInsuredPerson: Attachment
+                      ContractorInformation:
+                        - LegalEntity:
+                            organizationId: 4ce4ffc2-bc3e-460d-9b2b-b6153f3f2650
+                            organizationName: ООО «Медицинская клиника №1»
+                            organizationInn: '7701000000'
+                            organizationKpp: '770101001'
+                      CustomerInformation:
+                        - LegalEntity:
+                            organizationId: f3d9a8a4-73e3-4583-9b2a-8f930d7f9f7f
+                            organizationName: АО «Страховая компания»
+                            organizationInn: '7702000000'
+                            organizationKpp: '770201001'
+                      BranchInformation:
+                        - LegalEntity:
+                            organizationId: 13c9db36-1b1c-4dad-9182-433c168b777e
+                            organizationName: Филиал «Тверской»
+                            organizationInn: '7701000000'
+                            organizationKpp: '770101002'
+                          Address:
+                            postalCode: '125047'
+                            regionCode: '77'
+                            regionName: г. Москва
+                            city: Москва
+                            street: 1-я Тверская-Ямская
+                            house: '10'
+                      InsuredPersonInformation:
+                        - seriesAndNumberDms: DMS-009988
+                          startDate: '2025-11-01'
+                          endDate: '2026-10-31'
+                          InsuredProgramms:
+                            - programName: ДМС Стандарт
+                              programCode: DMS_STD
+                              paymentType: '0'
+                              agreedTreatmentLimit: '750000.00'
+                              СurrencyInfo:
+                                Сurrency: RUB
+                              InsuranceRisks:
+                                - riskCode: AMBULATORY
+                                  riscShortName: Амбулаторная помощь
+                                  riscDescriptions: Консультации, диагностика, лечение
+                          InsuredPersonDetails:
+                            birthDate: '1990-04-12'
+                            snils: 123-456-789-10
+                            gender: '1'
+                            Address:
+                              postalCode: '125130'
+                              regionCode: '77'
+                              regionName: г. Москва
+                              city: Москва
+                              street: Ленинградский проспект
+                              house: '15'
+                            IdentityDocumentInfo:
+                              documentType: '21'
+                              seriesAndNumber: 4509-123456
+                              issueDate: '2012-06-15'
+                              issuingAuthority: ГУ МВД России по г. Москве
+                              departmentCode: '7700001'
+                            omsPolicyNumber: '1234567890123456'
+                            FioContact:
+                              familyName: Петров
+                              name: Алексей
+                              patronymic: Игоревич
+                            ContactInfo:
+                              phoneNumberFax: +7-495-000-00-01
+                              emailAddress: alex.petrov@example.com
+                Links:
+                  self: https://api.example.ru/v1/insured-persons?page=1
+                Meta:
+                  totalPages: 1
+            changment-personal-data:
+              summary: Список на изменение персональных данных
+              description: Пример ответа, фиксирующий изменения идентификаторов и контактных сведений страхователя.
+              value:
+                Data:
+                  InsuredPerson:
+                    - insuredPersonId: ax-2025-10001
+                      documentName: Изменение персональных данных ДМС
+                      documentNumber: CHG-2025-015
+                      dateOfDocument: '2025-10-22'
+                      actionWithInsuredPerson: Changment
+                      ContractorInformation:
+                        - LegalEntity:
+                            organizationId: 4ce4ffc2-bc3e-460d-9b2b-b6153f3f2650
+                            organizationName: ООО «Медицинская клиника №1»
+                            organizationInn: '7701000000'
+                            organizationKpp: '770101001'
+                      CustomerInformation:
+                        - LegalEntity:
+                            organizationId: f3d9a8a4-73e3-4583-9b2a-8f930d7f9f7f
+                            organizationName: АО «Страховая компания»
+                            organizationInn: '7702000000'
+                            organizationKpp: '770201001'
+                      BranchInformation:
+                        - LegalEntity:
+                            organizationId: 13c9db36-1b1c-4dad-9182-433c168b777e
+                            organizationName: Филиал «Тверской»
+                            organizationInn: '7701000000'
+                            organizationKpp: '770101002'
+                          Address:
+                            postalCode: '125047'
+                            regionCode: '77'
+                            regionName: г. Москва
+                            city: Москва
+                            street: 1-я Тверская-Ямская
+                            house: '10'
+                      InsuredPersonInformation:
+                        - seriesAndNumberDms: DMS-001122
+                          startDate: '2024-01-01'
+                          endDate: '2024-12-31'
+                          InsuredProgramms:
+                            - programName: ДМС-Премиум
+                              programCode: DMS_PREM
+                              paymentType: '1'
+                              agreedTreatmentLimit: '1000000.00'
+                              InsuranceRisks:
+                                - riskCode: AMBULATORY
+                                  riscShortName: Амбулаторная помощь
+                                  riscDescriptions: Полное покрытие
+                          InsuredPersonDetails:
+                            FioContact:
+                              oldValue:
+                                familyName: Иванова
+                                name: Мария
+                                patronymic: Петровна
+                              newValue:
+                                familyName: Иванова
+                                name: Мария
+                                patronymic: Алексеевна
+                              changedAt: '2025-10-22'
+                            birthDate:
+                              oldValue: '1985-04-01'
+                              newValue: '1985-01-04'
+                            snils:
+                              oldValue: 123-456-789-01
+                              newValue: 987-654-321-00
+                            gender:
+                              oldValue: '1'
+                              newValue: '2'
+                            Address:
+                              oldValue:
+                                postalCode: '141400'
+                                regionCode: '50'
+                                regionName: Московская область
+                                city: Химки
+                                street: Панфилова
+                                house: '21'
+                              newValue:
+                                postalCode: '125047'
+                                regionCode: '77'
+                                regionName: г. Москва
+                                city: Москва
+                                street: Правды
+                                house: '26'
+                              changedAt: '2025-10-22'
+                            omsPolicyNumber:
+                              oldValue: '1234567890123456'
+                              newValue: '6543210987654321'
+                            position:
+                              oldValue: Менеджер
+                              newValue: Руководитель группы
+                            category:
+                              oldValue: Стандарт
+                              newValue: VIP
+                            employerInfo:
+                              oldValue: ООО «Компания А»
+                              newValue: АО «Компания Б»
+                            employerType:
+                              oldValue: Основной работодатель
+                              newValue: Член семьи
+                            ContactInfo:
+                              phoneNumberFax:
+                                oldValue: +7-495-000-00-01
+                                newValue: +7-495-999-99-99
+                              emailAddress:
+                                oldValue: m.ivanova@oldmail.ru
+                                newValue: m.ivanova@newmail.ru
+                      ContractDocumentInfo:
+                        documentNumber: DMS-12234-10\2024-F
+                        documentDate: '2024-01-01'
+                        documentName: Договор на предоставление медицинских услуг
+                Links:
+                  self: https://api.example.ru/v1/insured-persons?page=2
+                Meta:
+                  totalPages: 3
+            changment-programs:
+              summary: Список на изменение программ страхования
+              description: Пример ответа с пересмотром наборов программ и лимитов.
+              value:
+                Data:
+                  InsuredPerson:
+                    - insuredPersonId: ax-2025-20005
+                      documentName: Изменение страховых программ ДМС
+                      documentNumber: CHG-PRG-2025-004
+                      dateOfDocument: '2025-10-22'
+                      actionWithInsuredPerson: Changment
+                      ContractorInformation:
+                        - LegalEntity:
+                            organizationId: 8f1b0a24-74c8-4fdc-9aa9-78b517d79f30
+                            organizationName: ООО «Медицинская клиника №2»
+                            organizationInn: '7703000000'
+                            organizationKpp: '770301001'
+                      CustomerInformation:
+                        - LegalEntity:
+                            organizationId: 38a03a84-6c90-4b1a-9b1b-d8b2a66d1962
+                            organizationName: АО «Страховая компания»
+                            organizationInn: '7702000000'
+                            organizationKpp: '770201001'
+                      InsuredPersonInformation:
+                        - seriesAndNumberDms: DMS-777111
+                          startDate: '2024-04-01'
+                          endDate: '2025-03-31'
+                          InsuredProgramms:
+                            - programName: ДМС Комфорт
+                              programCode: DMS_COMFORT
+                              paymentType: '0'
+                              agreedTreatmentLimit:
+                                oldValue: '600000.00'
+                                newValue: '800000.00'
+                              СurrencyInfo:
+                                Сurrency: RUB
+                              InsuranceRisks:
+                                - riskCode: AMBULATORY
+                                  riscShortName: Амбулаторная помощь
+                                  riscDescriptions: Консультации и диагностика
+                                - riskCode: STOMATOLOGY
+                                  riscShortName: Стоматологическая помощь
+                                  riscDescriptions: Плановое лечение и профилактика
+                            - programName: ДМС Реабилитация
+                              programCode: DMS_REHAB
+                              paymentType: '1'
+                              agreedTreatmentLimit:
+                                oldValue: '0.00'
+                                newValue: '250000.00'
+                              InsuranceRisks:
+                                - riskCode: REHAB
+                                  riscShortName: Реабилитация
+                                  riscDescriptions: Восстановительное лечение
+                          InsuredPersonDetails:
+                            FioContact:
+                              familyName: Смирнов
+                              name: Илья
+                              patronymic: Дмитриевич
+                            birthDate: '1987-07-22'
+                            snils: 222-333-444-55
+                            gender: '1'
+                Links:
+                  self: https://api.example.ru/v1/insured-persons?page=3
+                Meta:
+                  totalPages: 3
     400Error:
-      description: Запрос имеет неверное, отсутствующее или несовместимое тело JSON, параметры URL или поля заголовка
+      description: 'Запрос имеет неверное, отсутствующее или несовместимое тело JSON, параметры URL или поля заголовка. Для запроса получения списка застрахованных лиц используются коды ошибок: `Header.Missing`, `Header.Invalid`, `Field.Missing`, `Value.Invalid`, `Format.Invalid`.'
       headers:
         x-fapi-interaction-id:
           schema:
@@ -1827,16 +2391,30 @@ components:
           schema:
             $ref: '#/components/schemas/OBRUErrorResponse'
           examples:
-            obru:
+            insuredPersonListRequestValidation:
+              summary: Ошибки валидации запроса на получение списка застрахованных лиц
               value:
                 code: '400'
-                id: 5aca5b0d-1730-416f-a52b-6d353b687082
-                message: Bad Request
+                id: 77e9a7c4-df6b-4f6a-b564-3fddc3a58810
+                message: Request validation failed
                 Errors:
-                  - errorCode: RU.CBR.Field.Missing
-                    message: Обязательное поле, необходимое для API, отсутствует в полезной нагрузке
-                    path: Data.Model.Object.filled
-                    url: https://example.com/error-description
+                  - errorCode: Header.Missing
+                    message: Отсутствует обязательный заголовок взаимодействия x-fapi-interaction-id
+                    path: headers.x-fapi-interaction-id
+                    url: https://example.com/docs/errors#x-fapi-interaction-id-missing
+                  - errorCode: Header.Invalid
+                    message: Заголовок Accept должен содержать значение application/json
+                    path: headers.Accept
+                    url: https://example.com/docs/errors#accept-header
+                  - errorCode: Field.Missing
+                    message: Параметр page не передан
+                    path: query.page
+                  - errorCode: Value.Invalid
+                    message: Параметр page должен быть целым числом в диапазоне 1..5000
+                    path: query.page
+                  - errorCode: Format.Invalid
+                    message: Заголовок If-Modified-Since должен быть указан в формате RFC-7231
+                    path: headers.If-Modified-Since
     401Error:
       description: Заголовок авторизации отсутствует или неверный токен
       headers:
@@ -1865,12 +2443,12 @@ components:
             $ref: '#/components/schemas/OBRUErrorResponse'
           example:
             code: '403'
-            id: ab41a751-619b-4947-bf0a-251f6e92f599
-            message: Forbidden
+            id: 97ed4827-7b6f-4491-a06f-b548d5a7512d
+            message: Доступ запрещён. требуется иная область действия токена.
             Errors:
-              - errorCode: RU.CBR.Authenticate.InvalidScope
-                message: Предъявленный токен доступа не содержит область действия (scope) необходимый для доступа к ресурсу
-                url: https://example.com/error-description
+              - errorCode: Authenticate.InvalidScope
+                message: Для вызова требуется область действия `insuredperson`.
+                path: $.authorization.scope
     404Error:
       description: Сторонний Поставщик пытается получить ресурс, который указан в спецификации, но не реализован на стороне ППИУ, либо ресурс, который не определен
       headers:
@@ -1912,13 +2490,12 @@ components:
             $ref: '#/components/schemas/OBRUErrorResponse'
           example:
             code: '500'
-            id: af467d1b-985d-4a8e-972e-24a32287085f
-            message: Internal Server Error
+            id: c4c5fe3a-9c71-4b3c-9c55-1c4db7c6f812
+            message: Внутренняя ошибка сервиса, повторите запрос позднее.
             Errors:
-              - errorCode: RU.CBR.UnexpectedError
-                message: Что-то пошло не так на стороне Поставщика услуг
-                path: Data.Model.Object.filled
-                url: https://example.com/error-description
+              - errorCode: Signature.Malformed
+                message: Значение заголовка x-jws-signature повреждено и не может быть проверено.
+                path: $.headers.x-jws-signature
     200Head:
       description: Запрос успешно выполнен
       headers:

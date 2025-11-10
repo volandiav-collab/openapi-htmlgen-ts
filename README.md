@@ -8,6 +8,12 @@ npm i
 npm run dev -- examples/account-info-openapi-le.yaml --template-dir templates --output dist/index.html
 # или из готового unified JSON
 npm run dev -- examples/doc-unified.json --assume-unified --template-dir templates --output dist/index.html
+# или по строчно с переносом
+npm run dev -- examples/medical-insured-person-v2.yaml \
+  --template-dir templates \
+  --output dist/index.html \
+  --include-nested \
+  --docx dist/medical-insured-person.docx
 ```
 
 ## Скрипты
@@ -34,7 +40,8 @@ mv dist/bin/pkg-entry-macos dist/bin/openapi-htmlgen
   --template-dir templates \
   --output dist/index.html \
   --docx dist/medical-insured-person.docx
-```
+``
+`
 
 ## Структура
 - `src/` — код загрузчика, маппера, валидации, рендера и CLI.

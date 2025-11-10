@@ -642,26 +642,61 @@ function buildSchemaProperty(
   if (includeNested && resolved?.properties) {
     const childRequired = new Set<string>(resolved.required ?? []);
     for (const [childName, childSchema] of Object.entries<any>(resolved.properties)) {
-      children.push(buildSchemaProperty(spec, childName, childSchema, childRequired, includeNested));
+      const childProperty = buildSchemaProperty(spec, childName, childSchema, childRequired, includeNested);
+      childProperty.contextLabel = 'properties';
+      children.push(childProperty);
     }
   }
   if (includeNested && resolved?.items && resolved.type === 'array') {
     const childRequired = new Set<string>();
-    children.push(buildSchemaProperty(spec, '[item]', resolved.items, childRequired, includeNested));
+    const itemProperty = buildSchemaProperty(spec, '[item]', resolved.items, childRequired, includeNested);
+    itemProperty.contextLabel = 'items';
+    children.push(itemProperty);
     property.childrenLabel = 'items';
+  }
+  if (includeNested && (Array.isArray(resolved?.oneOf) || Array.isArray(resolved?.anyOf))) {
+    const keyword = Array.isArray(resolved.oneOf) ? 'oneOf' : 'anyOf';
+    const variants = (resolved.oneOf ?? resolved.anyOf) as any[];
+    let index = 0;
+    for (const variant of variants) {
+      const resolvedVariant = resolveSchema(spec, variant);
+      const caseName = deriveCaseName(variant, resolvedVariant, keyword, index++);
+      const variantProperty = buildSchemaProperty(spec, caseName, variant, new Set<string>(), includeNested);
+      variantProperty.contextLabel = keyword;
+      children.push(variantProperty);
+    }
   }
   if (children.length) {
     property.children = children;
     if (!property.childrenLabel) {
-      property.childrenLabel = 'properties';
+      property.childrenLabel = children[0]?.contextLabel ?? 'properties';
     }
   }
   return property;
 }
 
+function deriveCaseName(variant: any, resolvedVariant: any, keyword: 'oneOf' | 'anyOf', index: number): string {
+  const candidate = resolvedVariant ?? variant;
+  if (candidate && typeof candidate === 'object' && typeof candidate.title === 'string') {
+    return candidate.title;
+  }
+  const refSource = (variant && typeof variant === 'object' && variant.$ref)
+    ? variant.$ref
+    : (resolvedVariant && typeof resolvedVariant === 'object' && resolvedVariant.$ref)
+      ? resolvedVariant.$ref
+      : null;
+  if (refSource) {
+    const ref = refName(String(refSource));
+    if (ref) return ref;
+  }
+  const label = keyword === 'oneOf' ? 'Вариант' : 'Допустимый вариант';
+  return `${label} ${index + 1}`;
+}
+
 function flattenSchemaProperties(properties: UnifiedSchemaProperty[] | undefined, depth = 0, parentLabel: string | null = null): UnifiedSchemaFlatProperty[] {
   const result: UnifiedSchemaFlatProperty[] = [];
   for (const prop of properties ?? []) {
+    const currentLabel = prop.contextLabel ?? parentLabel ?? null;
     result.push({
       name: prop.name,
       depth,
@@ -675,10 +710,20 @@ function flattenSchemaProperties(properties: UnifiedSchemaProperty[] | undefined
       ref: prop.ref ?? null,
       enum: prop.enum,
       example: prop.example,
-      parentLabel
+      parentLabel: currentLabel
     });
     if (prop.children?.length) {
-      result.push(...flattenSchemaProperties(prop.children, depth + 1, prop.childrenLabel ?? null));
+      const grouped = new Map<string | null, UnifiedSchemaProperty[]>();
+      for (const child of prop.children) {
+        const label = child.contextLabel ?? prop.childrenLabel ?? currentLabel ?? null;
+        if (!grouped.has(label)) {
+          grouped.set(label, []);
+        }
+        grouped.get(label)!.push(child);
+      }
+      for (const [label, list] of grouped.entries()) {
+        result.push(...flattenSchemaProperties(list, depth + 1, label));
+      }
     }
   }
   return result;
@@ -691,6 +736,18 @@ function buildUnifiedSchema(spec: any, name: string, schema: any, includeNested:
   const properties: UnifiedSchemaProperty[] = [];
   for (const [propName, propSchema] of Object.entries<any>(resolved?.properties ?? {})) {
     properties.push(buildSchemaProperty(spec, propName, propSchema, required, includeNested));
+  }
+  if (includeNested && (Array.isArray(resolved?.oneOf) || Array.isArray(resolved?.anyOf))) {
+    const keyword = Array.isArray(resolved.oneOf) ? 'oneOf' : 'anyOf';
+    const variants = (resolved.oneOf ?? resolved.anyOf) as any[];
+    let index = 0;
+    for (const variant of variants) {
+      const resolvedVariant = resolveSchema(spec, variant);
+      const caseName = deriveCaseName(variant, resolvedVariant, keyword, index++);
+      const variantProperty = buildSchemaProperty(spec, caseName, variant, new Set<string>(), includeNested);
+      variantProperty.contextLabel = keyword;
+      properties.push(variantProperty);
+    }
   }
   const flatProperties = flattenSchemaProperties(properties);
   return {
