@@ -47,6 +47,10 @@
               <td>
                 {% if p.parentLabel == 'items' %}
                   <div><em>Элемент массива</em></div>
+                {% elseif p.parentLabel == 'oneOf' %}
+                  <div><em>Вариант oneOf</em></div>
+                {% elseif p.parentLabel == 'anyOf' %}
+                  <div><em>Вариант anyOf</em></div>
                 {% endif %}
                 {% if p.description %}{{ p.description | markdownInline }}{% endif %}
                 {% if p.enum %}
